@@ -20,6 +20,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.AspNet
 
         protected override bool ActivityStart(DateTime timestamp, string activityId)
         {
+            Console.WriteLine("REQUEST COUNT - HIT ACTIVITY START"); // EXPERIMENTING ONLY
+
             _window.AddDataPoint(timestamp);
             return _window.Count >= Settings.RequestCount;
         }

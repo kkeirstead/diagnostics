@@ -20,6 +20,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         public EventTracePipeline(DiagnosticsClient client, EventTracePipelineSettings settings, Func<Stream, CancellationToken, Task> onStreamAvailable)
         {
+            Console.WriteLine("EventTracePipeline - Constructor, this = " + this); // EXPERIMENTING ONLY
+
             Client = client ?? throw new ArgumentNullException(nameof(client));
             Settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _onStreamAvailable = onStreamAvailable ?? throw new ArgumentNullException(nameof(onStreamAvailable));
@@ -30,6 +32,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         {
             try
             {
+                Console.WriteLine("EventTracePipeline - OnRun, this = " + this); // EXPERIMENTING ONLY
+
                 //It is important that the underlying stream be completely read, or disposed.
                 //If rundown is enabled, the underlying stream must be drained or disposed, or the app hangs.
                 using Stream eventStream = await _provider.Value.ProcessEvents(Client, Settings.Duration, token);
@@ -44,6 +48,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         protected override async Task OnCleanup()
         {
+            Console.WriteLine("EventTracePipeline - OnCleanup, this = " + this); // EXPERIMENTING ONLY
+
             if (_provider.IsValueCreated)
             {
                 await _provider.Value.DisposeAsync();

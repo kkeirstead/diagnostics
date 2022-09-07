@@ -70,6 +70,8 @@ namespace Microsoft.Diagnostics.Monitoring
         /// lower level runtime/OS/hardware to keep the process in a consistent state</remarks>
         public Task RunAsync(CancellationToken token)
         {
+            Console.WriteLine("Pipeline - RunAsync, this = " + this); // EXPERIMENTING ONLY
+
             Task runTask = null;
             lock (_lock)
             {
@@ -95,6 +97,8 @@ namespace Microsoft.Diagnostics.Monitoring
             {
                 try
                 {
+                    Console.WriteLine("Pipeline - RunAsyncCore, this = " + this); // EXPERIMENTING ONLY
+
                     linkedSource.Token.ThrowIfCancellationRequested();
                     await OnRun(linkedSource.Token);
                 }
@@ -127,6 +131,8 @@ namespace Microsoft.Diagnostics.Monitoring
         /// lower level runtime/OS/hardware to keep the process in a consistent state</remarks>
         public Task StopAsync(CancellationToken token = default)
         {
+            Console.WriteLine("Pipeline - StopAsync, this = " + this); // EXPERIMENTING ONLY
+
             Task stopTask = null;
             lock (_lock)
             {
@@ -152,6 +158,8 @@ namespace Microsoft.Diagnostics.Monitoring
 
         private async Task StopAsyncCore(CancellationToken token)
         {
+            Console.WriteLine("Pipeline - StopAsyncCore, this = " + this); // EXPERIMENTING ONLY
+
             using (var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(token, _disposeSource.Token))
             {
                 try
@@ -171,6 +179,8 @@ namespace Microsoft.Diagnostics.Monitoring
 
         private Task Cleanup()
         {
+            Console.WriteLine("Pipeline - Cleanup, this = " + this); // EXPERIMENTING ONLY
+
             Task cleanupTask = null;
             lock (_lock)
             {

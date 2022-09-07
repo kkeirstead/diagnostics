@@ -21,12 +21,23 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.AspNet
 
         protected override bool ActivityStop(DateTime timestamp, string activityId, long durationTicks, int statusCode)
         {
+            Console.WriteLine("HIT ACTIVITY STOP"); // EXPERIMENTING ONLY
+
             if (Settings.StatusCodes.Any(r => statusCode >= r.Min && statusCode <= r.Max))
             {
                 _window.AddDataPoint(timestamp);
             }
 
             return _window.Count >= Settings.RequestCount;
+        }
+
+        protected override bool ActivityStart(DateTime timestamp, string activityId)
+        {
+            Console.WriteLine("HIT ACTIVITY START"); // EXPERIMENTING ONLY
+
+            return false;
+            //_window.AddDataPoint(timestamp);
+            //return _window.Count >= Settings.RequestCount;
         }
     }
 }
