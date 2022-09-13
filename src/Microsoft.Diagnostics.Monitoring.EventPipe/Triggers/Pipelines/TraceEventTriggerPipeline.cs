@@ -83,6 +83,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
 
         protected override async Task OnRun(CancellationToken token)
         {
+            Console.WriteLine("TraceEventTriggerPipeline - OnRun, this = " + this); // EXPERIMENTING ONLY
+
             using var _ = token.Register(() => _completionSource.TrySetCanceled(token));
 
             await _completionSource.Task.ConfigureAwait(false);
@@ -90,6 +92,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
 
         protected override Task OnStop(CancellationToken token)
         {
+            Console.WriteLine("TraceEventTriggerPipeline - OnStop, this = " + this); // EXPERIMENTING ONLY
+
             _completionSource.TrySetResult(null);
 
             return base.OnStop(token);
@@ -97,6 +101,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
 
         protected override Task OnCleanup()
         {
+            Console.WriteLine("TraceEventTriggerPipeline - OnCleanup, this = " + this); // EXPERIMENTING ONLY
+
             _completionSource.TrySetCanceled();
 
             _eventSource.Dynamic.RemoveCallback<TraceEvent>(TraceEventCallback);
@@ -106,6 +112,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
 
         private void TraceEventCallback(TraceEvent obj)
         {
+            Console.WriteLine("TraceEventTriggerPipeline - TraceEventCallback, this = " + this); // EXPERIMENTING ONLY
+
             // Check if processing of in-flight events should be ignored
             // due to pipeline in the midst of stopping.
             if (!_completionSource.Task.IsCompleted)

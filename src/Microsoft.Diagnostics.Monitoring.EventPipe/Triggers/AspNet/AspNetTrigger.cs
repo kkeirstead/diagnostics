@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 
 namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.AspNet
 {
@@ -59,25 +60,60 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.AspNet
 
             if (traceEvent.ProviderGuid == MicrosoftAspNetCoreHostingGuid)
             {
-                int? statusCode = null;
-                long? duration = null;
-                AspnetTriggerEventType eventType = AspnetTriggerEventType.Start;
-
-                System.Collections.IList arguments = (System.Collections.IList)traceEvent.PayloadValue(2);
-                string activityId = ExtractByIndex(arguments, 0);
-                string path = ExtractByIndex(arguments, 1);
-
-                if (traceEvent.EventName == Activity1Stop)
+                try
                 {
-                    statusCode = int.Parse(ExtractByIndex(arguments, 2));
-                    duration = long.Parse(ExtractByIndex(arguments, 3));
-                    eventType = AspnetTriggerEventType.Stop;
+                    int? statusCode = null;
+                    long? duration = 0;
+                    AspnetTriggerEventType eventType = AspnetTriggerEventType.Start;
 
-                    Debug.Assert(statusCode != null, "Status code cannot be null.");
-                    Debug.Assert(duration != null, "Duration cannot be null.");
+                    System.Collections.IList arguments = (System.Collections.IList)traceEvent.PayloadValue(2);
+
+                    string activityId = "";// = ExtractByIndex(arguments, 0);
+                    string path = "";// = ExtractByIndex(arguments, 1);
+
+                    foreach (var argument in arguments)
+                    {
+                        if (argument is IEnumerable<KeyValuePair<string, object>> argumentsEnumerable)
+                        {
+                            string key = (string)argumentsEnumerable.First().Value;
+                            string value = (string)argumentsEnumerable.Last().Value;
+
+                            if (key.Equals("activityid", StringComparison.OrdinalIgnoreCase))
+                            {
+                                activityId = value;
+                            }
+                            else if (key.Equals("path", StringComparison.OrdinalIgnoreCase))
+                            {
+                                path = value;
+                            }
+                            else if (key.Equals("statuscode", StringComparison.OrdinalIgnoreCase))
+                            {
+                                statusCode = int.Parse(value);
+                            }
+                            else if (key.Equals("activityduration", StringComparison.OrdinalIgnoreCase))
+                            {
+                                duration = long.Parse(value);
+                            }
+                        }
+                    }
+
+                    if (traceEvent.EventName == Activity1Stop)
+                    {
+                        //statusCode = int.Parse(ExtractByIndex(arguments, 2));
+                        //duration = long.Parse(ExtractByIndex(arguments, 3));
+                        eventType = AspnetTriggerEventType.Stop;
+
+                        //Debug.Assert(statusCode != null, "Status code cannot be null.");
+                        //Debug.Assert(duration != null, "Duration cannot be null.");
+                    }
+
+                    return HasSatisfiedCondition(timeStamp, eventType, activityId, path, statusCode, duration);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("ASPNETTRIGGER EXCEPTION: " + ex.Message);
                 }
 
-                return HasSatisfiedCondition(timeStamp, eventType, activityId, path, statusCode, duration);
             }
 
             //Heartbeat only
