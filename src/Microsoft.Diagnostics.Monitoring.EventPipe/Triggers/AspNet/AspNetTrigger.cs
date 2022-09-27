@@ -9,7 +9,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 
 namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.AspNet
 {
@@ -53,78 +52,43 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.AspNet
 
         protected virtual bool Heartbeat(DateTime timestamp) => false;
 
-        public bool HasSatisfiedCondition(TraceEvent traceEvent)
+    public bool HasSatisfiedCondition(TraceEvent traceEvent)
+    {
+      //We deconstruct the TraceEvent data to make it easy to write tests
+      DateTime timeStamp = traceEvent.TimeStamp;
+
+      if (traceEvent.ProviderGuid == MicrosoftAspNetCoreHostingGuid)
+      {
+        int? statusCode = null;
+        long? duration = null;
+        AspnetTriggerEventType eventType = AspnetTriggerEventType.Start;
+
+        System.Collections.IList arguments = (System.Collections.IList)traceEvent.PayloadValue(2);
+        string activityId = ExtractByIndex(arguments, 0);
+        string path = ExtractByIndex(arguments, 1);
+
+        if (traceEvent.EventName == Activity1Stop)
         {
-            //We deconstruct the TraceEvent data to make it easy to write tests
-            DateTime timeStamp = traceEvent.TimeStamp;
+          statusCode = int.Parse(ExtractByIndex(arguments, 2));
+          duration = long.Parse(ExtractByIndex(arguments, 3));
+          eventType = AspnetTriggerEventType.Stop;
 
-            if (traceEvent.ProviderGuid == MicrosoftAspNetCoreHostingGuid)
-            {
-                try
-                {
-                    int? statusCode = null;
-                    long? duration = 0;
-                    AspnetTriggerEventType eventType = AspnetTriggerEventType.Start;
-
-                    System.Collections.IList arguments = (System.Collections.IList)traceEvent.PayloadValue(2);
-
-                    string activityId = "";// = ExtractByIndex(arguments, 0);
-                    string path = "";// = ExtractByIndex(arguments, 1);
-
-                    foreach (var argument in arguments)
-                    {
-                        if (argument is IEnumerable<KeyValuePair<string, object>> argumentsEnumerable)
-                        {
-                            string key = (string)argumentsEnumerable.First().Value;
-                            string value = (string)argumentsEnumerable.Last().Value;
-
-                            if (key.Equals("activityid", StringComparison.OrdinalIgnoreCase))
-                            {
-                                activityId = value;
-                            }
-                            else if (key.Equals("path", StringComparison.OrdinalIgnoreCase))
-                            {
-                                path = value;
-                            }
-                            else if (key.Equals("statuscode", StringComparison.OrdinalIgnoreCase))
-                            {
-                                statusCode = int.Parse(value);
-                            }
-                            else if (key.Equals("activityduration", StringComparison.OrdinalIgnoreCase))
-                            {
-                                duration = long.Parse(value);
-                            }
-                        }
-                    }
-
-                    if (traceEvent.EventName == Activity1Stop)
-                    {
-                        //statusCode = int.Parse(ExtractByIndex(arguments, 2));
-                        //duration = long.Parse(ExtractByIndex(arguments, 3));
-                        eventType = AspnetTriggerEventType.Stop;
-
-                        //Debug.Assert(statusCode != null, "Status code cannot be null.");
-                        //Debug.Assert(duration != null, "Duration cannot be null.");
-                    }
-
-                    return HasSatisfiedCondition(timeStamp, eventType, activityId, path, statusCode, duration);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("ASPNETTRIGGER EXCEPTION: " + ex.Message);
-                }
-
-            }
-
-            //Heartbeat only
-            return HasSatisfiedCondition(timeStamp, eventType: AspnetTriggerEventType.Heartbeat, activityId: null, path: null, statusCode: null, duration: null);
-
+          Debug.Assert(statusCode != null, "Status code cannot be null.");
+          Debug.Assert(duration != null, "Duration cannot be null.");
         }
 
-        /// <summary>
-        /// This method is to enable testing.
-        /// </summary>
-        internal bool HasSatisfiedCondition(DateTime timestamp, AspnetTriggerEventType eventType, string activityId, string path, int? statusCode, long? duration)
+        return HasSatisfiedCondition(timeStamp, eventType, activityId, path, statusCode, duration);
+      }
+
+      //Heartbeat only
+      return HasSatisfiedCondition(timeStamp, eventType: AspnetTriggerEventType.Heartbeat, activityId: null, path: null, statusCode: null, duration: null);
+
+    }
+
+    /// <summary>
+    /// This method is to enable testing.
+    /// </summary>
+    internal bool HasSatisfiedCondition(DateTime timestamp, AspnetTriggerEventType eventType, string activityId, string path, int? statusCode, long? duration)
         {
             if (eventType == AspnetTriggerEventType.Heartbeat)
             {
