@@ -54,17 +54,46 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
     /// by index. The order must match the data extracted in the triggers.
     /// </remarks>
     private const string DiagnosticFilterString =
-                "Microsoft.AspNetCore/Microsoft.AspNetCore.Hosting.HttpRequestIn.Start@Activity1Start:-" +
-                    "ActivityId=*Activity.Id" +
-                    ";Request.Path" +
-                    ";ActivityStartTime=*Activity.StartTimeUtc.Ticks" +
-                    "\r\n" +
-                "Microsoft.AspNetCore/Microsoft.AspNetCore.Hosting.HttpRequestIn.Stop@Activity1Stop:-" +
-                    "ActivityId=*Activity.Id" +
-                    ";Request.Path" +
-                    ";Response.StatusCode" +
-                    ";ActivityDuration=*Activity.Duration.Ticks" +
-                    "\r\n";
+            "Microsoft.AspNetCore/Microsoft.AspNetCore.Hosting.HttpRequestIn.Start@Activity1Start:-" +
+                "ActivityId=*Activity.Id" +
+                ";Request.Path" +
+                ";ActivityStartTime=*Activity.StartTimeUtc.Ticks" +
+                ";Request.Scheme" +
+                ";Request.Host" +
+                ";Request.PathBase" +
+                ";Request.QueryString" +
+                ";Request.Method" +
+                ";ActivityParentId=*Activity.ParentId" +
+                ";ActivitySpanId=*Activity.SpanId" +
+                ";ActivityTraceId=*Activity.TraceId" +
+                ";ActivityParentSpanId=*Activity.ParentSpanId" +
+                ";ActivityIdFormat=*Activity.IdFormat" +
+            "\r\n" +
+            "Microsoft.AspNetCore/Microsoft.AspNetCore.Hosting.HttpRequestIn.Stop@Activity1Stop:-" +
+                "ActivityId=*Activity.Id" +
+                ";Request.Path" +
+                ";Response.StatusCode" +
+                ";ActivityDuration=*Activity.Duration.Ticks" +
+            "\r\n" +
+            "HttpHandlerDiagnosticListener/System.Net.Http.HttpRequestOut@Event:-" +
+            "\r\n" +
+            "HttpHandlerDiagnosticListener/System.Net.Http.HttpRequestOut.Start@Activity2Start:-" +
+                "Request.RequestUri" +
+                ";Request.Method" +
+                ";Request.RequestUri.Host" +
+                ";Request.RequestUri.Port" +
+                ";ActivityStartTime=*Activity.StartTimeUtc.Ticks" +
+                ";ActivityId=*Activity.Id" +
+                ";ActivitySpanId=*Activity.SpanId" +
+                ";ActivityTraceId=*Activity.TraceId" +
+                ";ActivityParentSpanId=*Activity.ParentSpanId" +
+                ";ActivityIdFormat=*Activity.IdFormat" +
+                ";ActivityId=*Activity.Id" +
+                "\r\n" +
+            "HttpHandlerDiagnosticListener/System.Net.Http.HttpRequestOut.Stop@Activity2Stop:-" +
+                ";ActivityDuration=*Activity.Duration.Ticks" +
+                ";ActivityId=*Activity.Id" +
+            "\r\n";
 
     public override IList<EventPipeProvider> GetProviders()
         {
