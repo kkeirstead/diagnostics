@@ -104,6 +104,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
             return base.OnCleanup();
         }
 
+        // Register a callback for when data comes back from the extension
         private void TraceEventCallback(TraceEvent obj)
         {
             // Check if processing of in-flight events should be ignored
