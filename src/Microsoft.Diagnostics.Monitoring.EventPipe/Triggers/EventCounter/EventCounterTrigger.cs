@@ -11,11 +11,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.EventCounter
 {
-    /// <summary>
-    /// Trigger that detects when the specified event source counter value is held
-    /// above, below, or between threshold values for a specified duration of time.
-    /// </summary>
-    internal sealed class EventCounterTrigger :
+  /// <summary>
+  /// Trigger that detects when the specified event source counter value is held
+  /// above, below, or between threshold values for a specified duration of time.
+  /// </summary>
+  internal sealed class EventCounterTrigger :
         ITraceEventTrigger
     {
         // A cache of the list of events that are expected from the specified event provider.

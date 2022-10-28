@@ -9,6 +9,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 
 namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
 {
@@ -23,17 +24,17 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
         // This is a mapping of event provider name to the event map returned by GetProviderEventMap.
         // This allows caching of the event map between multiple instances of the trigger that
         // use the same event provider as the source of counter events.
-        private static readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, IReadOnlyCollection<string>>> _eventMapCache =
-            new ConcurrentDictionary<string, IReadOnlyDictionary<string, IReadOnlyCollection<string>>>(StringComparer.OrdinalIgnoreCase);
+        //private static ConcurrentDictionary<string, IReadOnlyDictionary<string, IReadOnlyCollection<string>>> _eventMapCache =
+        //    new ConcurrentDictionary<string, IReadOnlyDictionary<string, IReadOnlyCollection<string>>>(StringComparer.OrdinalIgnoreCase);
 
         // Only care for the EventCounters events from any of the specified providers, thus
         // create a static readonly instance that is shared among all event maps.
-        private static readonly IReadOnlyCollection<string> _eventProviderEvents =
-            new ReadOnlyCollection<string>(new string[] { "EventCounters" });
+        //private static readonly IReadOnlyCollection<string> _eventProviderEvents =
+        //    new ReadOnlyCollection<string>(new string[] { "EventCounters" });
 
         private readonly CounterFilter _filter;
         private readonly CustomTriggerImpl _impl;
-        private readonly string _providerName;
+        private readonly HashSet<string> _providerNames;
 
         public CustomTrigger(CustomTriggerSettings settings)
         {
@@ -45,16 +46,19 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
             Validate(settings);
 
             _filter = new CounterFilter(settings.CounterIntervalSeconds);
-            _filter.AddFilter(settings.ProviderName, new string[] { settings.CounterName });
+
+            foreach (var provider in settings.Providers)
+            {
+                _filter.AddFilter(provider.ProviderName, new string[] { provider.CounterName });
+                _providerNames.Add(provider.ProviderName); // Not being used at this time
+            }
 
             _impl = new CustomTriggerImpl(settings);
-
-            _providerName = settings.ProviderName;
         }
 
         public IReadOnlyDictionary<string, IReadOnlyCollection<string>> GetProviderEventMap()
         {
-            return _eventMapCache.GetOrAdd(_providerName, CreateEventMapForProvider);
+            return null; // This might get us all providers/counters? Try this for now.
         }
 
         public bool HasSatisfiedCondition(TraceEvent traceEvent)
@@ -62,7 +66,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
             // Filter to the counter of interest before forwarding to the implementation
             if (traceEvent.TryGetCounterPayload(_filter, out ICounterPayload payload))
             {
-                return _impl.HasSatisfiedCondition(payload);
+                return _impl.PushDataToExtension(payload);
             }
             return false;
         }
@@ -71,7 +75,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
         {
             Validate(settings);
 
-            return new MetricSourceConfiguration(settings.CounterIntervalSeconds, new string[] { settings.ProviderName });
+            return new MetricSourceConfiguration(settings.CounterIntervalSeconds, settings.Providers.Select(provider => provider.ProviderName).ToArray());
         }
 
         private static void Validate(CustomTriggerSettings settings)
@@ -80,6 +84,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
             Validator.ValidateObject(settings, context, validateAllProperties: true);
         }
 
+        /*
         private IReadOnlyDictionary<string, IReadOnlyCollection<string>> CreateEventMapForProvider(string providerName)
         {
             return new ReadOnlyDictionary<string, IReadOnlyCollection<string>>(
@@ -87,6 +92,6 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
                 {
                     { _providerName, _eventProviderEvents }
                 });
-        }
+        }*/
     }
 }

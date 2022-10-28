@@ -9,7 +9,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
     // The core implementation of the EventCounter trigger that processes
     // the trigger settings and evaluates the counter payload. Primary motivation
     // for the implementation is for unit testability separate from TraceEvent.
-    internal sealed class EventCounterTriggerImpl
+    internal sealed class CustomTriggerImpl
     {
         private readonly long _intervalTicks;
         private readonly Func<double, bool> _valueFilter;
@@ -18,7 +18,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
         private long? _latestTicks;
         private long? _targetTicks;
 
-        public EventCounterTriggerImpl(EventCounterTriggerSettings settings)
+        public CustomTriggerImpl(CustomTriggerSettings settings)
         {
             if (null == settings)
             {
@@ -48,7 +48,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
             _windowTicks = settings.SlidingWindowDuration.Ticks;
         }
 
-        public bool HasSatisfiedCondition(ICounterPayload payload)
+        public bool PushDataToExtension(ICounterPayload payload)
         {
             long payloadTimestampTicks = payload.Timestamp.Ticks;
             long payloadIntervalTicks = (long)(payload.Interval * TimeSpan.TicksPerSecond);

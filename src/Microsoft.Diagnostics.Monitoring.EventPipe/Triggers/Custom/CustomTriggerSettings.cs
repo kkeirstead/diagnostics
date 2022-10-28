@@ -18,48 +18,17 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Custom
         internal const float CounterIntervalSeconds_MaxValue = 24 * 60 * 60; // 1 day
         internal const float CounterIntervalSeconds_MinValue = 1; // 1 second
 
-        internal const string EitherGreaterThanLessThanMessage = "Either the " + nameof(GreaterThan) + " field or the " + nameof(LessThan) + " field are required.";
-
-        internal const string GreaterThanMustBeLessThanLessThanMessage = "The " + nameof(GreaterThan) + " field must be less than the " + nameof(LessThan) + " field.";
-
-        internal const string SlidingWindowDuration_MaxValue = "1.00:00:00"; // 1 day
-        internal const string SlidingWindowDuration_MinValue = "00:00:01"; // 1 second
-
         public string ExtensionName { get; set; }
 
         public string Args { get; set; }
 
-        //public Provider[] ProvidersToInclude { get; set; }
+        public Provider[] Providers { get; set; }
 
+        public float CounterIntervalSeconds { get; set; }
 
-
-    IEnumerable<ValidationResult> IValidatableObject.Validate(ValidationContext validationContext)
+        IEnumerable<ValidationResult> IValidatableObject.Validate(ValidationContext validationContext)
         {
             List<ValidationResult> results = new();
-
-            if (!GreaterThan.HasValue && !LessThan.HasValue)
-            {
-                results.Add(new ValidationResult(
-                    EitherGreaterThanLessThanMessage,
-                    new[]
-                    {
-                        nameof(GreaterThan),
-                        nameof(LessThan)
-                    }));
-            }
-            else if (GreaterThan.HasValue && LessThan.HasValue)
-            {
-                if (GreaterThan.Value >= LessThan.Value)
-                {
-                    results.Add(new ValidationResult(
-                        GreaterThanMustBeLessThanLessThanMessage,
-                        new[]
-                        {
-                            nameof(GreaterThan),
-                            nameof(LessThan)
-                        }));
-                }
-            }
 
             return results;
         }
