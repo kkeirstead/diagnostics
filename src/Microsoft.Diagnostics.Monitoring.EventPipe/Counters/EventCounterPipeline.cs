@@ -13,27 +13,33 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal class EventCounterPipeline : EventSourcePipeline<EventPipeCounterPipelineSettings>
     {
-        private readonly IEnumerable<ICountersLogger> _loggers;
-        private readonly CounterFilter _filter;
-        private string _sessionId;
+        private readonly List<IEnumerable<ICountersLogger>> _loggers;
+        private readonly List<CounterFilter> _filter;
+        private List<string> _sessionId;
 
         public EventCounterPipeline(DiagnosticsClient client,
             EventPipeCounterPipelineSettings settings,
             IEnumerable<ICountersLogger> loggers) : base(client, settings)
         {
-            _loggers = loggers ?? throw new ArgumentNullException(nameof(loggers));
+            if (loggers == null)
+            {
+                throw new ArgumentNullException(nameof(loggers));
+            }
+
+            _loggers.Add(loggers);
 
             if (settings.CounterGroups.Length > 0)
             {
-                _filter = new CounterFilter(Settings.CounterIntervalSeconds);
+                _filter.Add(new CounterFilter(Settings.CounterIntervalSeconds));
+                int filterIndex = _filter.Count;
                 foreach (var counterGroup in settings.CounterGroups)
                 {
-                    _filter.AddFilter(counterGroup.ProviderName, counterGroup.CounterNames);
+                    _filter[filterIndex - 1].AddFilter(counterGroup.ProviderName, counterGroup.CounterNames);
                 }
             }
             else
             {
-                _filter = CounterFilter.AllCounters(Settings.CounterIntervalSeconds);
+                _filter.Add(CounterFilter.AllCounters(Settings.CounterIntervalSeconds));
             }
         }
 

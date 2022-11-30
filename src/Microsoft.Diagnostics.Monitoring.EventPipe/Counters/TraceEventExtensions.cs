@@ -74,7 +74,6 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
             if (sessionId != null && "System.Diagnostics.Metrics".Equals(traceEvent.ProviderName))
             {
-                
                 ICounterPayload individualPayload = null;
 
                 if (traceEvent.EventName == "BeginInstrumentReporting")
@@ -282,8 +281,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             }
             else
             {
-                string errorMessage = "Error: Another metrics collection session is already in progress for the target process, perhaps from another tool? " + Environment.NewLine +
-                "Concurrent sessions are not supported.";
+                string errorMessage = "Error: Another metrics collection session is already in progress for the target process, perhaps from another tool? Concurrent sessions are not supported.";
 
                 payload = new ErrorPayload(string.Empty, string.Empty, string.Empty, string.Empty, new(), 0, obj.TimeStamp, errorMessage);
             }

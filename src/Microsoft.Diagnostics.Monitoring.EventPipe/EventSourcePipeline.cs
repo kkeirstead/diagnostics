@@ -5,6 +5,7 @@
 using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Diagnostics.Tracing;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,15 +13,27 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal abstract class EventSourcePipeline<T> : Pipeline where T : EventSourcePipelineSettings
     {
-        private readonly Lazy<DiagnosticsEventPipeProcessor> _processor;
-        public DiagnosticsClient Client { get; }
-        public T Settings { get; }
+        private readonly List<Lazy<DiagnosticsEventPipeProcessor>> _processor;
+        public List<DiagnosticsClient> Client { get; }
+        public List<T> Settings { get; }
 
         protected EventSourcePipeline(DiagnosticsClient client, T settings)
         {
-            Client = client ?? throw new ArgumentNullException(nameof(client));
-            Settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _processor = new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor);
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            Client.Add(client);
+
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
+
+            Settings.Add(settings);
+            
+            _processor.Add(new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor));
         }
 
         protected abstract MonitoringSourceConfiguration CreateConfiguration();
