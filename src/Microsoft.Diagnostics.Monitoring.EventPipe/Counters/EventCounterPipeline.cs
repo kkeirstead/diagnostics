@@ -13,33 +13,47 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal class EventCounterPipeline : EventSourcePipeline<EventPipeCounterPipelineSettings>
     {
-        private readonly IEnumerable<ICountersLogger> _loggers;
-        private readonly CounterFilter _filter;
-        private string _sessionId;
+        private readonly List<IEnumerable<ICountersLogger>> _loggers;
+        private readonly List<CounterFilter> _filter;
+        private List<string> _sessionId;
 
-        public EventCounterPipeline(DiagnosticsClient client,
-            EventPipeCounterPipelineSettings settings,
-            IEnumerable<ICountersLogger> loggers) : base(client, settings)
+        public EventCounterPipeline()
         {
-            _loggers = loggers ?? throw new ArgumentNullException(nameof(loggers));
+            
+        }
+
+        public void AddPipeline(DiagnosticsClient client,
+           EventPipeCounterPipelineSettings settings,
+           IEnumerable<ICountersLogger> loggers)
+        {
+            AddToPipeline(client, settings);
+
+            if (loggers == null)
+            {
+                throw new ArgumentNullException(nameof(loggers));
+            }
+
+            _loggers.Add(loggers);
 
             if (settings.CounterGroups.Length > 0)
             {
-                _filter = new CounterFilter(Settings.CounterIntervalSeconds);
+                _filter.Add(new CounterFilter(Settings.CounterIntervalSeconds));
+                int filterIndex = _filter.Count;
                 foreach (var counterGroup in settings.CounterGroups)
                 {
-                    _filter.AddFilter(counterGroup.ProviderName, counterGroup.CounterNames);
+                    _filter[filterIndex - 1].AddFilter(counterGroup.ProviderName, counterGroup.CounterNames);
                 }
             }
             else
             {
-                _filter = CounterFilter.AllCounters(Settings.CounterIntervalSeconds);
+                _filter.Add(CounterFilter.AllCounters(Settings.CounterIntervalSeconds));
             }
         }
 
+
         protected override MonitoringSourceConfiguration CreateConfiguration()
         {
-            var config = new MetricSourceConfiguration(Settings.CounterIntervalSeconds, _filter.GetProviders(), Settings.MaxHistograms, Settings.MaxTimeSeries);
+            var config = new MetricSourceConfiguration(Settings[0].CounterIntervalSeconds, _filter.GetProviders(), Settings.MaxHistograms, Settings.MaxTimeSeries);
 
             _sessionId = config.SessionId;
 
@@ -54,14 +68,17 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             {
                 try
                 {
-                    if (traceEvent.TryGetCounterPayload(_filter, _sessionId, out List<ICounterPayload> counterPayload))
+                    for (int index = 0; index < _filter.Count; ++index)
                     {
-                        ExecuteCounterLoggerAction((metricLogger) => {
-                            foreach (var payload in counterPayload)
-                            {
-                                metricLogger.Log(payload);
-                            }
-                        });
+                        if (traceEvent.TryGetCounterPayload(_filter[index], _sessionId[index], out List<ICounterPayload> counterPayload))
+                        {
+                            ExecuteCounterLoggerAction((metricLogger) => {
+                                foreach (var payload in counterPayload)
+                                {
+                                    metricLogger.Log(payload);
+                                }
+                            });
+                        }
                     }
                 }
                 catch (Exception)

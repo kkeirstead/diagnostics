@@ -5,6 +5,7 @@
 using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Diagnostics.Tracing;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,15 +13,32 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal abstract class EventSourcePipeline<T> : Pipeline where T : EventSourcePipelineSettings
     {
-        private readonly Lazy<DiagnosticsEventPipeProcessor> _processor;
-        public DiagnosticsClient Client { get; }
-        public T Settings { get; }
+        private readonly List<Lazy<DiagnosticsEventPipeProcessor>> _processor;
+        public List<DiagnosticsClient> Client { get; }
+        public List<T> Settings { get; }
 
-        protected EventSourcePipeline(DiagnosticsClient client, T settings)
+        protected EventSourcePipeline()
         {
-            Client = client ?? throw new ArgumentNullException(nameof(client));
-            Settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _processor = new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor);
+
+        }
+
+        protected void AddToPipeline(DiagnosticsClient client, T settings)
+        {
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            Client.Add(client);
+
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
+
+            Settings.Add(settings);
+
+            _processor.Add(new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor));
         }
 
         protected abstract MonitoringSourceConfiguration CreateConfiguration();
@@ -36,7 +54,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         {
             try
             {
-                return _processor.Value.Process(Client, Settings.Duration, token);
+                return _processor[0].Value.Process(Client[0], Settings[0].Duration, token);
             }
             catch (InvalidOperationException e)
             {
@@ -46,18 +64,18 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         protected override async Task OnCleanup()
         {
-            if (_processor.IsValueCreated)
+            if (_processor[0].IsValueCreated)
             {
-                await _processor.Value.DisposeAsync();
+                await _processor[0].Value.DisposeAsync();
             }
             await base.OnCleanup();
         }
 
         protected override async Task OnStop(CancellationToken token)
         {
-            if (_processor.IsValueCreated)
+            if (_processor[0].IsValueCreated)
             {
-                Task stoppingTask = _processor.Value.StopProcessing(token);
+                Task stoppingTask = _processor[0].Value.StopProcessing(token);
 
                 var taskCompletionSource = new TaskCompletionSource<bool>();
                 using IDisposable registration = token.Register(() => taskCompletionSource.SetCanceled());
