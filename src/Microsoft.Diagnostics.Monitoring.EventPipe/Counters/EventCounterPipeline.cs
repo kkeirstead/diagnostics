@@ -17,7 +17,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         private readonly List<CounterFilter> _filter = new();
         private string _sessionId;
 
-        public EventCounterPipeline()
+        public EventCounterPipeline() : base()
         {
         }
 
@@ -98,14 +98,17 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         private void ExecuteCounterLoggerAction(Action<ICountersLogger> action)
         {
-            foreach (ICountersLogger logger in _loggers)
+            foreach (var loggers in _loggers)
             {
-                try
+                foreach (ICountersLogger logger in loggers)
                 {
-                    action(logger);
-                }
-                catch (ObjectDisposedException)
-                {
+                    try
+                    {
+                        action(logger);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                    }
                 }
             }
         }
