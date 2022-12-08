@@ -32,10 +32,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
         // The trigger implementation used to detect a condition in the trace event source.
         private ITraceEventTrigger _trigger;
 
-        public EventPipeTriggerPipeline(DiagnosticsClient client, EventPipeTriggerPipelineSettings<TSettings> settings, Action<TraceEvent> callback)
+        public EventPipeTriggerPipeline(DiagnosticsClient client, EventPipeTriggerPipelineSettings<TSettings> settings, Action<TraceEvent> callback) : base(client, settings)
         {
-            AddToPipeline(client, settings);
-
             if (null == settings.Configuration)
             {
                 throw new ArgumentException(FormattableString.Invariant($"The {nameof(settings.Configuration)} property on the settings must not be null."), nameof(settings));

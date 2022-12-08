@@ -22,6 +22,25 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         }
 
+        protected EventSourcePipeline(DiagnosticsClient client, T settings)
+        {
+            if (client == null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+
+            Client.Add(client);
+
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
+
+            Settings.Add(settings);
+
+            _processor.Add(new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor));
+        }
+
         protected void AddToPipeline(DiagnosticsClient client, T settings)
         {
             if (client == null)

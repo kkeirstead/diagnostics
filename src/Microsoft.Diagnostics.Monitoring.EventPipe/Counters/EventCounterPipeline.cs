@@ -19,7 +19,6 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         public EventCounterPipeline()
         {
-            
         }
 
         public void AddPipeline(DiagnosticsClient client,

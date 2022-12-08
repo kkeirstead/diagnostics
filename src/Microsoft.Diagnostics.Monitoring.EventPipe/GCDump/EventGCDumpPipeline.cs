@@ -17,9 +17,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
     {
         private readonly MemoryGraph _gcGraph;
 
-        public EventGCDumpPipeline(DiagnosticsClient client, EventGCPipelineSettings settings, MemoryGraph gcGraph)
+        public EventGCDumpPipeline(DiagnosticsClient client, EventGCPipelineSettings settings, MemoryGraph gcGraph) : base(client, settings)
         {
-            AddToPipeline(client, settings);
             _gcGraph = gcGraph ?? throw new ArgumentNullException(nameof(gcGraph));
         }
 
