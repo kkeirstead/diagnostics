@@ -13,9 +13,9 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal abstract class EventSourcePipeline<T> : Pipeline where T : EventSourcePipelineSettings
     {
-        private readonly List<Lazy<DiagnosticsEventPipeProcessor>> _processor;
-        public List<DiagnosticsClient> Client { get; }
-        public List<T> Settings { get; }
+        private readonly List<Lazy<DiagnosticsEventPipeProcessor>> _processor = new();
+        public List<DiagnosticsClient> Client { get; } = new();
+        public List<T> Settings { get; } = new();
 
         protected EventSourcePipeline()
         {
@@ -105,7 +105,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             // started task. Logically, the run task will not successfully complete before the session
             // started task. Thus, the combined task completes either when the session started task is
             // completed OR the run task has cancelled/failed.
-            await Task.WhenAny(_processor.Value.SessionStarted, runTask).Unwrap();
+            await Task.WhenAny(_processor[0].Value.SessionStarted, runTask).Unwrap();
 
             return runTask;
         }

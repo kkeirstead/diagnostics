@@ -32,15 +32,16 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
         // The trigger implementation used to detect a condition in the trace event source.
         private ITraceEventTrigger _trigger;
 
-        public EventPipeTriggerPipeline(DiagnosticsClient client, EventPipeTriggerPipelineSettings<TSettings> settings, Action<TraceEvent> callback) :
-            base(client, settings)
+        public EventPipeTriggerPipeline(DiagnosticsClient client, EventPipeTriggerPipelineSettings<TSettings> settings, Action<TraceEvent> callback)
         {
-            if (null == Settings.Configuration)
+            AddToPipeline(client, settings);
+
+            if (null == settings.Configuration)
             {
                 throw new ArgumentException(FormattableString.Invariant($"The {nameof(settings.Configuration)} property on the settings must not be null."), nameof(settings));
             }
 
-            if (null == Settings.TriggerFactory)
+            if (null == settings.TriggerFactory)
             {
                 throw new ArgumentException(FormattableString.Invariant($"The {nameof(settings.TriggerFactory)} property on the settings must not be null."), nameof(settings));
             }
@@ -50,12 +51,12 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
 
         protected override MonitoringSourceConfiguration CreateConfiguration()
         {
-            return Settings.Configuration;
+            return Settings[0].Configuration;
         }
 
         protected override async Task OnEventSourceAvailable(EventPipeEventSource eventSource, Func<Task> stopSessionAsync, CancellationToken token)
         {
-            _trigger = Settings.TriggerFactory.Create(Settings.TriggerSettings);
+            _trigger = Settings[0].TriggerFactory.Create(Settings[0].TriggerSettings);
 
             _pipeline = new TraceEventTriggerPipeline(eventSource, _trigger, _callback);
 

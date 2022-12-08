@@ -15,8 +15,9 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         private readonly Func<string, CancellationToken, Task> _onCommandLine;
 
         public EventProcessInfoPipeline(DiagnosticsClient client, EventProcessInfoPipelineSettings settings, Func<string, CancellationToken, Task> onCommandLine)
-            : base(client, settings)
         {
+            AddToPipeline(client, settings);
+
             _onCommandLine = onCommandLine ?? throw new ArgumentNullException(nameof(onCommandLine));
         }
 

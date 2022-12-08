@@ -17,9 +17,10 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
     {
         private readonly ILoggerFactory _factory;
         private static readonly Func<object, Exception, string> _messageFormatter = MessageFormatter;
-        public EventLogsPipeline(DiagnosticsClient client, EventLogsPipelineSettings settings, ILoggerFactory factory) 
-            : base(client, settings)
+        public EventLogsPipeline(DiagnosticsClient client, EventLogsPipelineSettings settings, ILoggerFactory factory)
         {
+            AddToPipeline(client, settings);
+
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         }
 
@@ -28,10 +29,10 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             try
             {
                 return new LoggingSourceConfiguration(
-                    Settings.LogLevel,
+                    Settings[0].LogLevel,
                     LogMessageType.FormattedMessage | LogMessageType.JsonMessage,
-                    Settings.FilterSpecs,
-                    Settings.UseAppFilters);
+                    Settings[0].FilterSpecs,
+                    Settings[0].UseAppFilters);
             }
             catch (NotSupportedException ex)
             {

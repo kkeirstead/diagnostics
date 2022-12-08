@@ -13,9 +13,9 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal class EventCounterPipeline : EventSourcePipeline<EventPipeCounterPipelineSettings>
     {
-        private readonly List<IEnumerable<ICountersLogger>> _loggers;
-        private readonly List<CounterFilter> _filter;
-        private List<string> _sessionId;
+        private readonly List<IEnumerable<ICountersLogger>> _loggers = new();
+        private readonly List<CounterFilter> _filter = new();
+        private string _sessionId;
 
         public EventCounterPipeline()
         {
@@ -37,7 +37,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
             if (settings.CounterGroups.Length > 0)
             {
-                _filter.Add(new CounterFilter(Settings.CounterIntervalSeconds));
+                _filter.Add(new CounterFilter(settings.CounterIntervalSeconds));
                 int filterIndex = _filter.Count;
                 foreach (var counterGroup in settings.CounterGroups)
                 {
@@ -46,14 +46,14 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             }
             else
             {
-                _filter.Add(CounterFilter.AllCounters(Settings.CounterIntervalSeconds));
+                _filter.Add(CounterFilter.AllCounters(settings.CounterIntervalSeconds));
             }
         }
 
 
         protected override MonitoringSourceConfiguration CreateConfiguration()
         {
-            var config = new MetricSourceConfiguration(Settings[0].CounterIntervalSeconds, _filter.GetProviders(), Settings.MaxHistograms, Settings.MaxTimeSeries);
+            var config = new MetricSourceConfiguration(Settings[0].CounterIntervalSeconds, _filter[0].GetProviders(), Settings[0].MaxHistograms, Settings[0].MaxTimeSeries);
 
             _sessionId = config.SessionId;
 
@@ -70,7 +70,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 {
                     for (int index = 0; index < _filter.Count; ++index)
                     {
-                        if (traceEvent.TryGetCounterPayload(_filter[index], _sessionId[index], out List<ICounterPayload> counterPayload))
+                        if (traceEvent.TryGetCounterPayload(_filter[index], _sessionId, out List<ICounterPayload> counterPayload))
                         {
                             ExecuteCounterLoggerAction((metricLogger) => {
                                 foreach (var payload in counterPayload)
