@@ -6,6 +6,7 @@ using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Diagnostics.Tracing;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,7 +14,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal abstract class EventSourcePipeline<T> : Pipeline where T : EventSourcePipelineSettings
     {
-        private readonly List<Lazy<DiagnosticsEventPipeProcessor>> _processor = new();
+        private Lazy<DiagnosticsEventPipeProcessor> _processor = new();
         public List<DiagnosticsClient> Client { get; } = new();
         public List<T> Settings { get; } = new();
 
@@ -38,7 +39,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
             Settings.Add(settings);
 
-            _processor.Add(new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor));
+            _processor = new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor);
         }
 
         protected void AddToPipeline(DiagnosticsClient client, T settings)
@@ -57,7 +58,11 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
             Settings.Add(settings);
 
-            _processor.Add(new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor));
+            _processor = new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor);
+
+            CancellationTokenSource source = new();
+
+            //await _processor.Value.StopProcessing(source.Token);
         }
 
         protected abstract MonitoringSourceConfiguration CreateConfiguration();
@@ -73,7 +78,23 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         {
             try
             {
-                return _processor[0].Value.Process(Client[0], Settings[0].Duration, token);
+                List<Task> tasks = new();
+
+                TimeSpan maxDuration = new TimeSpan(0);
+
+                for (int index = 0; index < Client.Count; ++index)
+                {
+                    if (Settings[index].Duration == TimeSpan.FromSeconds(-1))
+                    {
+                        maxDuration = TimeSpan.FromSeconds(-1);
+                        break;
+                    } else if (Settings[index].Duration > maxDuration && maxDuration != TimeSpan.FromSeconds(-1))
+                    {
+                        maxDuration = Settings[index].Duration;
+                    }
+                }
+
+                return _processor.Value.Process(Client[0], maxDuration, token);
             }
             catch (InvalidOperationException e)
             {
@@ -83,18 +104,18 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         protected override async Task OnCleanup()
         {
-            if (_processor[0].IsValueCreated)
+            if (_processor.IsValueCreated)
             {
-                await _processor[0].Value.DisposeAsync();
+                await _processor.Value.DisposeAsync();
             }
             await base.OnCleanup();
         }
 
         protected override async Task OnStop(CancellationToken token)
         {
-            if (_processor[0].IsValueCreated)
+            if (_processor.IsValueCreated)
             {
-                Task stoppingTask = _processor[0].Value.StopProcessing(token);
+                Task stoppingTask = _processor.Value.StopProcessing(token);
 
                 var taskCompletionSource = new TaskCompletionSource<bool>();
                 using IDisposable registration = token.Register(() => taskCompletionSource.SetCanceled());
@@ -124,7 +145,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             // started task. Logically, the run task will not successfully complete before the session
             // started task. Thus, the combined task completes either when the session started task is
             // completed OR the run task has cancelled/failed.
-            await Task.WhenAny(_processor[0].Value.SessionStarted, runTask).Unwrap();
+            await Task.WhenAny(_processor.Value.SessionStarted, runTask).Unwrap();
 
             return runTask;
         }

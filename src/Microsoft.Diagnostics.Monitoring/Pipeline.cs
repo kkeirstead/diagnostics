@@ -79,10 +79,12 @@ namespace Microsoft.Diagnostics.Monitoring
                 }
                 else
                 {
-                    if (_runTask == null)
+                    _runTask = RunAsyncCore(token);
+
+                    /*if (_runTask == null)
                     {
                         _runTask = RunAsyncCore(token);
-                    }
+                    }*/
                     runTask = _runTask;
                 }
             }

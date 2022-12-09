@@ -52,7 +52,17 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         protected override MonitoringSourceConfiguration CreateConfiguration()
         {
-            var config = new MetricSourceConfiguration(Settings[0].CounterIntervalSeconds, _filter[0].GetProviders(), Settings[0].MaxHistograms, Settings[0].MaxTimeSeries);
+            HashSet<string> providers = new();
+
+            for (int index = 0; index < _filter.Count; ++index)
+            {
+                foreach (var provider in _filter[index].GetProviders())
+                {
+                    providers.Add(provider);
+                }
+            }
+
+            var config = new MetricSourceConfiguration(Settings[0].CounterIntervalSeconds, providers, Settings[0].MaxHistograms, Settings[0].MaxTimeSeries);
 
             _sessionId = config.SessionId;
 
@@ -61,7 +71,10 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
         protected override async Task OnEventSourceAvailable(EventPipeEventSource eventSource, Func<Task> stopSessionAsync, CancellationToken token)
         {
-            ExecuteCounterLoggerAction((metricLogger) => metricLogger.PipelineStarted());
+            for (int index = 0; index < _loggers.Count; ++index)
+            {
+                ExecuteCounterLoggerAction((metricLogger) => metricLogger.PipelineStarted(), index);
+            }
 
             eventSource.Dynamic.All += traceEvent =>
             {
@@ -76,7 +89,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                                 {
                                     metricLogger.Log(payload);
                                 }
-                            });
+                            }, index);
                         }
                     }
                 }
@@ -93,22 +106,22 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
             await sourceCompletedTaskSource.Task;
 
-            ExecuteCounterLoggerAction((metricLogger) => metricLogger.PipelineStopped());
+            for (int index = 0; index < _loggers.Count; ++index)
+            {
+                ExecuteCounterLoggerAction((metricLogger) => metricLogger.PipelineStopped(), index);
+            }
         }
 
-        private void ExecuteCounterLoggerAction(Action<ICountersLogger> action)
+        private void ExecuteCounterLoggerAction(Action<ICountersLogger> action, int loggerIndex)
         {
-            foreach (var loggers in _loggers)
+            foreach (ICountersLogger logger in _loggers[loggerIndex])
             {
-                foreach (ICountersLogger logger in loggers)
+                try
                 {
-                    try
-                    {
-                        action(logger);
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                    }
+                    action(logger);
+                }
+                catch (ObjectDisposedException)
+                {
                 }
             }
         }
