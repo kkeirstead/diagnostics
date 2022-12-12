@@ -58,11 +58,10 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
             Settings.Add(settings);
 
-            _processor = new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor);
-
-            CancellationTokenSource source = new();
-
-            //await _processor.Value.StopProcessing(source.Token);
+            if (!_processor.IsValueCreated)
+            {
+                _processor = new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor);
+            }
         }
 
         protected abstract MonitoringSourceConfiguration CreateConfiguration();
@@ -84,7 +83,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
                 for (int index = 0; index < Client.Count; ++index)
                 {
-                    if (Settings[index].Duration == TimeSpan.FromSeconds(-1))
+                    if (Settings[index].Duration < TimeSpan.FromSeconds(0))
                     {
                         maxDuration = TimeSpan.FromSeconds(-1);
                         break;
@@ -138,6 +137,20 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         /// </remarks>
         public async Task<Task> StartAsync(CancellationToken token)
         {
+            if (_processor.IsValueCreated)
+            {
+                await _processor.Value.StopEventTask();
+            }
+            /*
+            if (_processor.IsValueCreated)
+            {
+                CancellationTokenSource source = new();
+                await _processor.Value.StopProcessing(source.Token);
+                await _processor.Value.DisposeAsync();
+
+                _processor = new Lazy<DiagnosticsEventPipeProcessor>(CreateProcessor);
+            }*/
+
             Task runTask = RunAsync(token);
 
             // Await both the session started or the run task and return when either is completed.

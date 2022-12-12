@@ -23,6 +23,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         private EventPipeEventSource _eventSource;
         private Func<Task> _stopFunc;
         private bool _disposed;
+        private Task handleEventsTask;
+        private CancellationTokenSource handleEventsTokenSource;
 
         // Allows tests to know when the event pipe session has started so that the
         // target application can start producing events.
@@ -48,7 +50,9 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             {
                 EventPipeEventSource source = null;
                 EventPipeStreamProvider streamProvider = null;
-                Task handleEventsTask = Task.CompletedTask;
+                handleEventsTask = Task.CompletedTask;
+                handleEventsTokenSource = new();
+                token = handleEventsTokenSource.Token;
                 try
                 {
                     streamProvider = new EventPipeStreamProvider(_configuration);
@@ -114,6 +118,13 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 await handleEventsTask;
 
             }, token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+
+        public async Task StopEventTask()
+        {
+            handleEventsTokenSource.Cancel();
+
+            await handleEventsTask;
         }
 
         public async Task StopProcessing(CancellationToken token)
