@@ -56,6 +56,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 throw new ArgumentNullException(nameof(settings));
             }
 
+            settings.ID = Guid.NewGuid();
+
             Settings.Add(settings);
 
             if (!_processor.IsValueCreated)
@@ -79,18 +81,31 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             {
                 List<Task> tasks = new();
 
-                TimeSpan maxDuration = new TimeSpan(0);
+                TimeSpan maxDuration = TimeSpan.Zero;
+                int minDurationIndex = -1;
 
                 for (int index = 0; index < Client.Count; ++index)
                 {
                     if (Settings[index].Duration < TimeSpan.FromSeconds(0))
                     {
                         maxDuration = TimeSpan.FromSeconds(-1);
-                        break;
-                    } else if (Settings[index].Duration > maxDuration && maxDuration != TimeSpan.FromSeconds(-1))
+                    } else
                     {
-                        maxDuration = Settings[index].Duration;
+                        if (maxDuration >= TimeSpan.Zero && Settings[index].Duration > maxDuration)
+                        {
+                            maxDuration = Settings[index].Duration;
+                        }
+
+                        if (minDurationIndex < 0 || Settings[index].Duration < Settings[minDurationIndex].Duration)
+                        {
+                            minDurationIndex = index;
+                        }
                     }
+                }
+
+                if (minDurationIndex >= 0 && Settings[minDurationIndex].ID != null)
+                {
+                    Task.Delay(new TimeSpan(0, 0, (int)Settings[minDurationIndex].Duration.TotalSeconds)).ContinueWith(o => { RemovePipeline(Settings[minDurationIndex].Duration, Settings[minDurationIndex].ID); });
                 }
 
                 return _processor.Value.Process(Client[0], maxDuration, token);
@@ -99,6 +114,11 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             {
                 throw new PipelineException(e.Message, e);
             }
+        }
+
+        protected virtual void RemovePipeline(TimeSpan duration, Guid identifier)
+        {
+            throw new NotImplementedException();
         }
 
         protected override async Task OnCleanup()

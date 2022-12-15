@@ -11,5 +11,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
     internal class EventSourcePipelineSettings
     {
         public TimeSpan Duration { get; set; }
+
+        public Guid ID { get; set; }
     }
 }

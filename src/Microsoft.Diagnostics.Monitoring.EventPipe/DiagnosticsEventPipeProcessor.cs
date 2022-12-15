@@ -59,16 +59,16 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                     // Allows the event handling routines to stop processing before the duration expires.
                     Func<Task> stopFunc = () => Task.Run(() => { streamProvider.StopProcessing(); });
 
-                    Stream sessionStream = await streamProvider.ProcessEvents(client, duration, token);
+                    Stream sessionStream = await streamProvider.ProcessEvents(client, duration, handleEventsTokenSource.Token);
 
                     if (!_sessionStarted.TrySetResult(true))
                     {
-                        token.ThrowIfCancellationRequested();
+                        handleEventsTokenSource.Token.ThrowIfCancellationRequested();
                     }
 
                     source = new EventPipeEventSource(sessionStream);
 
-                    handleEventsTask = _onEventSourceAvailable(source, stopFunc, token);
+                    handleEventsTask = _onEventSourceAvailable(source, stopFunc, handleEventsTokenSource.Token);
 
                     lock (_lock)
                     {
@@ -78,11 +78,11 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                     registration.Dispose();
                     if (!_initialized.TrySetResult(true))
                     {
-                        token.ThrowIfCancellationRequested();
+                        handleEventsTokenSource.Token.ThrowIfCancellationRequested();
                     }
 
                     source.Process();
-                    token.ThrowIfCancellationRequested();
+                    handleEventsTokenSource.Token.ThrowIfCancellationRequested();
                 }
                 catch (DiagnosticsClientException ex)
                 {
@@ -124,7 +124,13 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         {
             handleEventsTokenSource.Cancel();
 
-            await handleEventsTask;
+            await Task.Delay(2);
+
+            //await StopProcessing(handleEventsTokenSource.Token);
+
+            //handleEventsTokenSource.Cancel();
+
+            //await handleEventsTask;
         }
 
         public async Task StopProcessing(CancellationToken token)

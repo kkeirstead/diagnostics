@@ -69,6 +69,36 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             return config;
         }
 
+        protected override void RemovePipeline(TimeSpan duration, Guid identifier)
+        {
+            int chosenIndex = -1;
+            for (int index = 0; index < Settings.Count; ++index)
+            {
+                if (Settings[index].ID == identifier)
+                {
+                    chosenIndex = index;
+                    break;
+                }
+            }
+
+            _filter.RemoveAt(chosenIndex);
+            _loggers.RemoveAt(chosenIndex);
+            Settings.RemoveAt(chosenIndex);
+            Client.RemoveAt(chosenIndex);
+
+            for (int index = 0; index < Settings.Count; ++index)
+            {
+                if (Settings[index].Duration > TimeSpan.Zero)
+                {
+                    Settings[index].Duration -= duration;
+                }
+            }
+
+            CancellationTokenSource source = new CancellationTokenSource();
+
+            _ = Task.Run(() => StartAsync(source.Token));
+        }
+
         protected override async Task OnEventSourceAvailable(EventPipeEventSource eventSource, Func<Task> stopSessionAsync, CancellationToken token)
         {
             for (int index = 0; index < _loggers.Count; ++index)
