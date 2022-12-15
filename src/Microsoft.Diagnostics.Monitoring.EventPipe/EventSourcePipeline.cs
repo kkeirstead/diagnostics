@@ -106,9 +106,12 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 if (minDurationIndex >= 0 && Settings[minDurationIndex].ID != null)
                 {
                     Task.Delay(new TimeSpan(0, 0, (int)Settings[minDurationIndex].Duration.TotalSeconds)).ContinueWith(o => { RemovePipeline(Settings[minDurationIndex].Duration, Settings[minDurationIndex].ID); });
+
+                    return _processor.Value.Process(Client[0], Settings[minDurationIndex].Duration, token);
                 }
 
                 return _processor.Value.Process(Client[0], maxDuration, token);
+
             }
             catch (InvalidOperationException e)
             {

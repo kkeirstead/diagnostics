@@ -96,7 +96,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
             CancellationTokenSource source = new CancellationTokenSource();
 
-            _ = Task.Run(() => StartAsync(source.Token));
+            //_ = Task.Run(() => StartAsync(source.Token));
         }
 
         protected override async Task OnEventSourceAvailable(EventPipeEventSource eventSource, Func<Task> stopSessionAsync, CancellationToken token)

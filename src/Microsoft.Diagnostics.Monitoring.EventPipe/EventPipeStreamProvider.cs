@@ -43,6 +43,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             _currentTask = Task.Run(async () =>
             {
                 using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                Console.WriteLine("Duration: " + duration);
                 linkedSource.CancelAfter(duration);
                 using var _ = linkedSource.Token.Register(() => _stopProcessingSource.TrySetResult(null));
 
