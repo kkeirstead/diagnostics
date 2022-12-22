@@ -73,6 +73,11 @@ namespace Microsoft.Diagnostics.Monitoring
             Task runTask = null;
             lock (_lock)
             {
+                _runTask = RunAsyncCore(token);
+                runTask = _runTask;
+                _isCleanedUp = false; // TESTING ONLY
+
+                /*
                 if (_isCleanedUp)
                 {
                     runTask = _runTask ?? Task.CompletedTask;
@@ -81,12 +86,12 @@ namespace Microsoft.Diagnostics.Monitoring
                 {
                     _runTask = RunAsyncCore(token);
 
-                    /*if (_runTask == null)
-                    {
-                        _runTask = RunAsyncCore(token);
-                    }*/
+                    //if (_runTask == null)
+                    //{
+                    //    _runTask = RunAsyncCore(token);
+                    //}
                     runTask = _runTask;
-                }
+                }*/
             }
             return runTask;
         }
@@ -192,6 +197,8 @@ namespace Microsoft.Diagnostics.Monitoring
         /// <returns></returns>
         public async ValueTask DisposeAsync()
         {
+            await Task.Delay(100); // TESTING ONLY
+            /*
             lock (_lock)
             {
                 if (_isCleanedUp)
@@ -207,7 +214,7 @@ namespace Microsoft.Diagnostics.Monitoring
             await SafeExecuteTask(() => _stopTask);
             await SafeExecuteTask(() => _cleanupTask);
 
-            _disposeSource.Dispose();
+            _disposeSource.Dispose();*/
         }
 
         private async Task SafeExecuteTask(Func<Task> acquireTask)
