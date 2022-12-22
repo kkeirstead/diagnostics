@@ -119,6 +119,12 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                     payload.Add(individualPayload);
                 }
 
+                // Can always check 0th index - even if the size is greater than 1, the provider/counter are the same for all indices
+                if (null != payload && !filter.IsIncluded(payload[0].Provider, payload[0].Name))
+                {
+                    return false;
+                }
+
                 return null != payload && payload.Any();
             }
 
