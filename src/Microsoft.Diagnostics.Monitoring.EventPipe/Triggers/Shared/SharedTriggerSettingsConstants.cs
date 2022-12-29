@@ -6,7 +6,7 @@ using Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.EventCounter;
 using Microsoft.Diagnostics.Tracing;
 using System.Collections.Generic;
 
-namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers
+namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Shared
 {
     internal class SharedTriggerSettingsConstants
     {
