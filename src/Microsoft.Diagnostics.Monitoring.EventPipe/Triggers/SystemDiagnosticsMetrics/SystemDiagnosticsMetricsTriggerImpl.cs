@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using Microsoft.Diagnostics.Tracing.Parsers.FrameworkEventSource;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,8 +15,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
     internal sealed class SystemDiagnosticsMetricsTriggerImpl
     {
         private readonly long _intervalTicks;
-        private readonly Func<double, bool> _valueFilter;
-        private readonly Func<Dictionary<string, double>, bool> _valueFilter2; // temporary
+        private readonly Func<double, bool> _valueFilterDefault;
+        private readonly Func<Dictionary<string, double>, bool> _valueFilterHistogram;
         private readonly long _windowTicks;
 
         private long? _latestTicks;
@@ -28,59 +29,32 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
                 throw new ArgumentNullException(nameof(settings));
             }
 
-            // needs to be updated for histogram
             if (settings.HistogramMode.HasValue)
             {
+                Func<double, double, bool> evalFunc;
+
                 if (settings.HistogramMode.Value == HistogramMode.GreaterThan)
                 {
-                    _valueFilter2 = histogramValues =>
-                    {
-                        foreach (var kvp in settings.HistogramPercentiles)
-                        {
-                            if (histogramValues.TryGetValue(kvp.Key, out var value))
-                            {
-                                // double check if this should be < or <=
-                                if (value <= kvp.Value)
-                                {
-                                    return false;
-                                }
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-
-                        return true;
-                    };
-                }
-                else if (settings.HistogramMode.Value == HistogramMode.LessThan)
-                {
-                    _valueFilter2 = histogramValues =>
-                    {
-                        foreach (var kvp in settings.HistogramPercentiles)
-                        {
-                            if (histogramValues.TryGetValue(kvp.Key, out var value))
-                            {
-                                // double check if this should be > or >=
-                                if (value >= kvp.Value)
-                                {
-                                    return false;
-                                }
-                            }
-                            else
-                            {
-                                return false;
-                            }
-                        }
-
-                        return true;
-                    };
+                    // double check if this should be > or >=
+                    evalFunc = (actual, expected) => actual > expected;
                 }
                 else
                 {
-                    _valueFilter = histogramValues => false;
+                    evalFunc = (actual, expected) => actual < expected;
                 }
+
+                _valueFilterHistogram = histogramValues =>
+                {
+                    foreach (var kvp in settings.HistogramPercentiles)
+                    {
+                        if (!histogramValues.TryGetValue(kvp.Key, out var value) || !evalFunc(value, kvp.Value))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                };
             }
             else
             {
@@ -90,17 +64,17 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
                     if (settings.LessThan.HasValue)
                     {
                         double maxValue = settings.LessThan.Value;
-                        _valueFilter = value => value > minValue && value < maxValue;
+                        _valueFilterDefault = value => value > minValue && value < maxValue;
                     }
                     else
                     {
-                        _valueFilter = value => value > minValue;
+                        _valueFilterDefault = value => value > minValue;
                     }
                 }
                 else if (settings.LessThan.HasValue)
                 {
                     double maxValue = settings.LessThan.Value;
-                    _valueFilter = value => value < maxValue;
+                    _valueFilterDefault = value => value < maxValue;
                 }
             }
 
@@ -110,64 +84,38 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
 
         public bool HasSatisfiedCondition(List<ICounterPayload> payloadList)
         {
-            // distinguish between histogram/non-histogram to decide if only need the 0th index of payload
+            ICounterPayload firstPayload = payloadList[0];
 
+            EventType eventType = firstPayload.EventType;
 
-            if (payloadList[0].EventType != EventType.Histogram)
+            if (eventType == EventType.Error)
             {
-                ICounterPayload payload = payloadList[0];
+                // not currently logging the error messages
 
-                long payloadTimestampTicks = payload.Timestamp.Ticks;
-                long payloadIntervalTicks = (long)(payload.Interval * TimeSpan.TicksPerSecond);
-
-                if (!_valueFilter(payload.Value))
-                {
-                    // Series was broken; reset state.
-                    _latestTicks = null;
-                    _targetTicks = null;
-                    return false;
-                }
-                else if (!_targetTicks.HasValue)
-                {
-                    // This is the first event in the series. Record latest and target times.
-                    _latestTicks = payloadTimestampTicks;
-                    // The target time should be the start of the first passing interval + the requisite time window.
-                    // The start of the first passing interval is the payload time stamp - the interval time.
-                    _targetTicks = payloadTimestampTicks - payloadIntervalTicks + _windowTicks;
-                }
-                else if (_latestTicks.Value + (1.5 * _intervalTicks) < payloadTimestampTicks)
-                {
-                    // Detected that an event was skipped/dropped because the time between the current
-                    // event and the previous is more that 150% of the requested interval; consecutive
-                    // counter events should not have that large of an interval. Reset for current
-                    // event to be first event in series. Record latest and target times.
-                    _latestTicks = payloadTimestampTicks;
-                    // The target time should be the start of the first passing interval + the requisite time window.
-                    // The start of the first passing interval is the payload time stamp - the interval time.
-                    _targetTicks = payloadTimestampTicks - payloadIntervalTicks + _windowTicks;
-                }
-                else
-                {
-                    // Update latest time to the current event time.
-                    _latestTicks = payloadTimestampTicks;
-                }
-
-                // Trigger is satisfied when the latest time is larger than the target time.
-                return _latestTicks >= _targetTicks;
+                return false;
             }
             else
             {
-                // TEMPORARY - copy-pasting everything from above, can probably combine this logic
+                bool passesValueFilter = false;
 
-                long payloadTimestampTicks = payloadList[0].Timestamp.Ticks;
-                long payloadIntervalTicks = (long)(payloadList[0].Interval * TimeSpan.TicksPerSecond);
+                if (eventType == EventType.Histogram)
+                {
+                    Dictionary<string, double> payloadDict = new();
 
-                Dictionary<string, double> payloadDict = new();
-                
-                // Convert payload list to dictionary
-                payloadDict = payloadList.ToDictionary(keySelector: p => GetPercentile(p.Metadata).ToString(), elementSelector: p => p.Value);
+                    // Convert payload list to dictionary
+                    payloadDict = payloadList.ToDictionary(keySelector: p => GetPercentile(p.Metadata).ToString(), elementSelector: p => p.Value);
 
-                if (!_valueFilter2(payloadDict))
+                    passesValueFilter = _valueFilterHistogram(payloadDict);
+                }
+                else
+                {
+                    passesValueFilter = _valueFilterDefault(firstPayload.Value);
+                }
+
+                long payloadTimestampTicks = firstPayload.Timestamp.Ticks;
+                long payloadIntervalTicks = (long)(firstPayload.Interval * TimeSpan.TicksPerSecond);
+
+                if (!passesValueFilter)
                 {
                     // Series was broken; reset state.
                     _latestTicks = null;
@@ -206,10 +154,10 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
 
         private double GetPercentile(string metadata)
         {
-            string percentile = metadata.Substring(metadata.IndexOf("Percentile"));
+            string percentile = metadata.Substring(metadata.IndexOf("Percentile=")); // These should be a constant shared with TraceEventExtensions
             percentile = percentile.Replace("Percentile=", string.Empty); // this assumes that Percentile is the last metadata - might not want to do this
 
-            return Convert.ToDouble(percentile); // This function is currently unverified
+            return Convert.ToDouble(percentile);
         }
     }
 }
