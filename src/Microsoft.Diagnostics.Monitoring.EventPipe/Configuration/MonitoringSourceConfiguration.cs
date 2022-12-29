@@ -36,5 +36,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         public virtual bool RequestRundown { get; set; } = true;
 
         public virtual int BufferSizeInMB => 256;
+
+        public virtual string SessionId { get; set; } // Temporary - not sure this is the right way to do this
     }
 }

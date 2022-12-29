@@ -5,16 +5,19 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using Constants = Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SharedTriggerSettingsConstants;
 
-namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.EventCounter
+namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsMetrics
 {
     /// <summary>
-    /// The settings for the <see cref="EventCounterTrigger"/>.
+    /// The settings for the <see cref="SystemDiagnosticsMetricsTrigger"/>.
     /// </summary>
-    internal sealed class EventCounterTriggerSettings :
+    internal sealed class SystemDiagnosticsMetricsTriggerSettings :
         IValidatableObject
     {
+        internal const string MissingHistogramModeOrPercentilesMessage = "Either the " + nameof(HistogramMode) + " field or the " + nameof(HistogramPercentiles) + " field is missing.";
+
         /// <summary>
         /// The name of the event provider from which counters will be monitored.
         /// </summary>
@@ -40,6 +43,19 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.EventCounter
         public double? LessThan { get; set; }
 
         /// <summary>
+        /// 
+        /// 
+        /// </summary>
+        public HistogramMode? HistogramMode { get; set; }
+
+        /// <summary>
+        /// 
+        /// 
+        /// </summary>
+        public IDictionary<double, double> HistogramPercentiles { get; set; }
+            = new Dictionary<double, double>(0);
+
+        /// <summary>
         /// The sliding duration of time in which the event counter must maintain a value
         /// above, below, or between the thresholds specified by <see cref="GreaterThan"/> and <see cref="LessThan"/>.
         /// </summary>
@@ -52,31 +68,69 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.EventCounter
         [Range(Constants.CounterIntervalSeconds_MinValue, Constants.CounterIntervalSeconds_MaxValue)]
         public float CounterIntervalSeconds { get; set; }
 
+        public int MaxHistograms { get; set; }
+
+        public int MaxTimeSeries { get; set; }
+
+        public string SessionId { get; set; }
+
         IEnumerable<ValidationResult> IValidatableObject.Validate(ValidationContext validationContext)
         {
             List<ValidationResult> results = new();
 
-            if (!GreaterThan.HasValue && !LessThan.HasValue)
+            if (HistogramMode.HasValue && HistogramPercentiles.Count > 0)
             {
-                results.Add(new ValidationResult(
-                    Constants.EitherGreaterThanLessThanMessage,
-                    new[]
-                    {
-                        nameof(GreaterThan),
-                        nameof(LessThan)
-                    }));
-            }
-            else if (GreaterThan.HasValue && LessThan.HasValue)
-            {
-                if (GreaterThan.Value >= LessThan.Value)
+                if (GreaterThan.HasValue || LessThan.HasValue)
                 {
                     results.Add(new ValidationResult(
-                        Constants.GreaterThanMustBeLessThanLessThanMessage,
+                        string.Format(
+                            "not allowed to have both types"))); // add resx for this
+                }
+            }
+            else if (HistogramMode.HasValue && !HistogramPercentiles.Any())
+            {
+                results.Add(new ValidationResult(
+                    MissingHistogramModeOrPercentilesMessage,
+                    new[]
+                    {
+                        nameof(HistogramPercentiles),
+                        nameof(HistogramMode)
+                    }));
+            }
+            else if (!HistogramMode.HasValue && HistogramPercentiles.Count > 0)
+            {
+                results.Add(new ValidationResult(
+                    MissingHistogramModeOrPercentilesMessage,
+                    new[]
+                    {
+                        nameof(HistogramPercentiles),
+                        nameof(HistogramMode)
+                    }));
+            }
+            else
+            {
+                if (!GreaterThan.HasValue && !LessThan.HasValue)
+                {
+                    results.Add(new ValidationResult(
+                        Constants.EitherGreaterThanLessThanMessage,
                         new[]
                         {
+                        nameof(GreaterThan),
+                        nameof(LessThan)
+                        }));
+                }
+                else if (GreaterThan.HasValue && LessThan.HasValue)
+                {
+                    if (GreaterThan.Value >= LessThan.Value)
+                    {
+                        results.Add(new ValidationResult(
+                            Constants.GreaterThanMustBeLessThanLessThanMessage,
+                            new[]
+                            {
                             nameof(GreaterThan),
                             nameof(LessThan)
-                        }));
+                            }));
+                    }
                 }
             }
 
