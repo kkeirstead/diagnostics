@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.Diagnostics.Tracing.Parsers.FrameworkEventSource;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,17 +30,9 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
 
             if (settings.HistogramMode.HasValue)
             {
-                Func<double, double, bool> evalFunc;
-
-                if (settings.HistogramMode.Value == HistogramMode.GreaterThan)
-                {
-                    // double check if this should be > or >=
-                    evalFunc = (actual, expected) => actual > expected;
-                }
-                else
-                {
-                    evalFunc = (actual, expected) => actual < expected;
-                }
+                Func<double, double, bool> evalFunc = settings.HistogramMode.Value == HistogramMode.GreaterThan ?
+                    (actual, expected) => actual > expected :
+                    (actual, expected) => actual < expected;
 
                 _valueFilterHistogram = histogramValues =>
                 {
@@ -58,28 +49,10 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
             }
             else
             {
-                if (settings.GreaterThan.HasValue)
-                {
-                    double minValue = settings.GreaterThan.Value;
-                    if (settings.LessThan.HasValue)
-                    {
-                        double maxValue = settings.LessThan.Value;
-                        _valueFilterDefault = value => value > minValue && value < maxValue;
-                    }
-                    else
-                    {
-                        _valueFilterDefault = value => value > minValue;
-                    }
-                }
-                else if (settings.LessThan.HasValue)
-                {
-                    double maxValue = settings.LessThan.Value;
-                    _valueFilterDefault = value => value < maxValue;
-                }
+                SharedTriggerImplHelper.SetDefaultValueFilter(ref _valueFilterDefault, settings.GreaterThan, settings.LessThan);
             }
 
-            _intervalTicks = (long)(settings.CounterIntervalSeconds * TimeSpan.TicksPerSecond);
-            _windowTicks = settings.SlidingWindowDuration.Ticks;
+            SharedTriggerImplHelper.SetIntervalAndWindowTicks(ref _intervalTicks, ref _windowTicks, settings.CounterIntervalSeconds, settings.SlidingWindowDuration.Ticks);
         }
 
         public bool HasSatisfiedCondition(List<ICounterPayload> payloadList)
@@ -96,66 +69,27 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
             }
             else
             {
-                bool passesValueFilter = false;
+                bool passesValueFilter = (eventType == EventType.Histogram) ?
+                    _valueFilterHistogram(CreatePayloadDict(payloadList)) :
+                    _valueFilterDefault(firstPayload.Value);
 
-                if (eventType == EventType.Histogram)
-                {
-                    Dictionary<string, double> payloadDict = new();
-
-                    // Convert payload list to dictionary
-                    payloadDict = payloadList.ToDictionary(keySelector: p => GetPercentile(p.Metadata).ToString(), elementSelector: p => p.Value);
-
-                    passesValueFilter = _valueFilterHistogram(payloadDict);
-                }
-                else
-                {
-                    passesValueFilter = _valueFilterDefault(firstPayload.Value);
-                }
-
-                long payloadTimestampTicks = firstPayload.Timestamp.Ticks;
-                long payloadIntervalTicks = (long)(firstPayload.Interval * TimeSpan.TicksPerSecond);
-
-                if (!passesValueFilter)
-                {
-                    // Series was broken; reset state.
-                    _latestTicks = null;
-                    _targetTicks = null;
-                    return false;
-                }
-                else if (!_targetTicks.HasValue)
-                {
-                    // This is the first event in the series. Record latest and target times.
-                    _latestTicks = payloadTimestampTicks;
-                    // The target time should be the start of the first passing interval + the requisite time window.
-                    // The start of the first passing interval is the payload time stamp - the interval time.
-                    _targetTicks = payloadTimestampTicks - payloadIntervalTicks + _windowTicks;
-                }
-                else if (_latestTicks.Value + (1.5 * _intervalTicks) < payloadTimestampTicks)
-                {
-                    // Detected that an event was skipped/dropped because the time between the current
-                    // event and the previous is more that 150% of the requested interval; consecutive
-                    // counter events should not have that large of an interval. Reset for current
-                    // event to be first event in series. Record latest and target times.
-                    _latestTicks = payloadTimestampTicks;
-                    // The target time should be the start of the first passing interval + the requisite time window.
-                    // The start of the first passing interval is the payload time stamp - the interval time.
-                    _targetTicks = payloadTimestampTicks - payloadIntervalTicks + _windowTicks;
-                }
-                else
-                {
-                    // Update latest time to the current event time.
-                    _latestTicks = payloadTimestampTicks;
-                }
-
-                // Trigger is satisfied when the latest time is larger than the target time.
-                return _latestTicks >= _targetTicks;
+                return SharedTriggerImplHelper.HasSatisfiedCondition(ref _latestTicks, ref _targetTicks, _windowTicks, _intervalTicks, firstPayload, passesValueFilter);
             }
+        }
+
+        private Dictionary<string, double> CreatePayloadDict(List<ICounterPayload> payloadList)
+        {
+            return payloadList.ToDictionary(keySelector: p => GetPercentile(p.Metadata).ToString(), elementSelector: p => p.Value);
         }
 
         private double GetPercentile(string metadata)
         {
-            string percentile = metadata.Substring(metadata.IndexOf("Percentile=")); // These should be a constant shared with TraceEventExtensions
-            percentile = percentile.Replace("Percentile=", string.Empty); // this assumes that Percentile is the last metadata - might not want to do this
+            string percentile = metadata.Substring(metadata.IndexOf(Constants.HistogramPercentileKey));
+            if (percentile.Contains(","))
+            {
+                percentile = percentile[..percentile.IndexOf(",")];
+            }
+            percentile = percentile.Replace(Constants.HistogramPercentileKey, string.Empty);
 
             return Convert.ToDouble(percentile);
         }

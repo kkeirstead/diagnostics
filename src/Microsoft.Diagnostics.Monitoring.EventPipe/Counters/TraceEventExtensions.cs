@@ -228,7 +228,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             KeyValuePair<double, double>[] quantiles = ParseQuantiles(quantilesText);
             foreach ((double key, double val) in quantiles)
             {
-                string tagsWithPercentile = AppendPercentile(tags, FormattableString.Invariant($"Percentile={(int)(100*key)}"));
+                string tagsWithPercentile = AppendPercentile(tags, FormattableString.Invariant($"{Constants.HistogramPercentileKey}{(int)(100*key)}"));
                 payload.Add(new PercentilePayload(meterName, instrumentName, null, unit, tagsWithPercentile, val, obj.TimeStamp));
             }
         }
