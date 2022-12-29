@@ -15,10 +15,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
     {
         private readonly long _intervalTicks;
         private readonly Func<double, bool> _valueFilter;
-        private readonly Func<Dictionary<double, double>, bool> _valueFilter2; // temporary
+        private readonly Func<Dictionary<string, double>, bool> _valueFilter2; // temporary
         private readonly long _windowTicks;
-
-        private readonly bool _isHistogram;
 
         private long? _latestTicks;
         private long? _targetTicks;
@@ -108,7 +106,6 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
 
             _intervalTicks = (long)(settings.CounterIntervalSeconds * TimeSpan.TicksPerSecond);
             _windowTicks = settings.SlidingWindowDuration.Ticks;
-            _isHistogram = settings.HistogramMode.HasValue;
         }
 
         public bool HasSatisfiedCondition(List<ICounterPayload> payloadList)
@@ -116,7 +113,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
             // distinguish between histogram/non-histogram to decide if only need the 0th index of payload
 
 
-            if (!_isHistogram)
+            if (payloadList[0].EventType != EventType.Histogram)
             {
                 ICounterPayload payload = payloadList[0];
 
@@ -165,10 +162,10 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
                 long payloadTimestampTicks = payloadList[0].Timestamp.Ticks;
                 long payloadIntervalTicks = (long)(payloadList[0].Interval * TimeSpan.TicksPerSecond);
 
-                Dictionary<double, double> payloadDict = new();
+                Dictionary<string, double> payloadDict = new();
                 
                 // Convert payload list to dictionary
-                payloadDict = payloadList.ToDictionary(keySelector: p => GetPercentile(p.Metadata), elementSelector: p => p.Value);
+                payloadDict = payloadList.ToDictionary(keySelector: p => GetPercentile(p.Metadata).ToString(), elementSelector: p => p.Value);
 
                 if (!_valueFilter2(payloadDict))
                 {
@@ -210,8 +207,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
         private double GetPercentile(string metadata)
         {
             string percentile = metadata.Substring(metadata.IndexOf("Percentile"));
-            percentile = percentile.Substring(0, percentile.IndexOf(","));
-            percentile = percentile.Replace("Percentile=", string.Empty);
+            percentile = percentile.Replace("Percentile=", string.Empty); // this assumes that Percentile is the last metadata - might not want to do this
 
             return Convert.ToDouble(percentile); // This function is currently unverified
         }

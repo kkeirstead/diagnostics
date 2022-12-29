@@ -52,8 +52,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
         /// 
         /// 
         /// </summary>
-        public IDictionary<double, double> HistogramPercentiles { get; set; }
-            = new Dictionary<double, double>(0);
+        public IDictionary<string, double> HistogramPercentiles { get; set; }
+            = new Dictionary<string, double>(0);
 
         /// <summary>
         /// The sliding duration of time in which the event counter must maintain a value
