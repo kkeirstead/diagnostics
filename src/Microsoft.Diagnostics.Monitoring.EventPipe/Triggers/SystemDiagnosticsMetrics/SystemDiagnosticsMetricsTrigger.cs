@@ -50,7 +50,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
             Validate(settings);
 
             _filter = new CounterFilter(settings.CounterIntervalSeconds);
-            _filter.AddFilter(settings.ProviderName, new string[] { settings.CounterName });
+            _filter.AddFilter(settings.ProviderName, new string[] { settings.InstrumentName });
             
             _impl = new SystemDiagnosticsMetricsTriggerImpl(settings);
 

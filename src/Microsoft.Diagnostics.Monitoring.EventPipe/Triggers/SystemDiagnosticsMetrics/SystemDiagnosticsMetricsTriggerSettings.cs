@@ -19,16 +19,16 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
         internal const string MissingHistogramModeOrPercentilesMessage = "Either the " + nameof(HistogramMode) + " field or the " + nameof(HistogramPercentiles) + " field is missing.";
 
         /// <summary>
-        /// The name of the event provider from which counters will be monitored.
+        /// The name of the event provider from which counters/gauges/histograms/etc. will be monitored.
         /// </summary>
         [Required]
         public string ProviderName { get; set; }
 
         /// <summary>
-        /// The name of the event counter from the event provider to monitor.
+        /// The name of the instrument from the event provider to monitor.
         /// </summary>
         [Required]
-        public string CounterName { get; set; }
+        public string InstrumentName { get; set; }
 
         /// <summary>
         /// The lower bound threshold that the event counter value must hold for
@@ -43,14 +43,14 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
         public double? LessThan { get; set; }
 
         /// <summary>
-        /// 
-        /// 
+        /// When monitoring a histogram, this dictates whether histogram values
+        /// should be greater or less than the specified percentiles.
         /// </summary>
         public HistogramMode? HistogramMode { get; set; }
 
         /// <summary>
-        /// 
-        /// 
+        /// The thresholds for each percentile that the value must hold for
+        /// the duration specified in <see cref="SlidingWindowDuration"/>
         /// </summary>
         public IDictionary<string, double> HistogramPercentiles { get; set; }
             = new Dictionary<string, double>(0);
