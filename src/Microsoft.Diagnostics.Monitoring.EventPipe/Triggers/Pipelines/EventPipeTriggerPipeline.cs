@@ -56,16 +56,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.Pipelines
 
         protected override async Task OnEventSourceAvailable(EventPipeEventSource eventSource, Func<Task> stopSessionAsync, CancellationToken token)
         {
-            // Don't do it this way
-            if (Settings.TriggerSettings is SystemDiagnosticsMetricsTriggerSettings settings)
-            {
-                settings.SessionId = Settings.Configuration.SessionId;
-                _trigger = Settings.TriggerFactory.Create(Settings.TriggerSettings);
-            }
-            else
-            {
-                _trigger = Settings.TriggerFactory.Create(Settings.TriggerSettings);
-            }
+            _trigger = Settings.TriggerFactory.Create(Settings.TriggerSettings);
 
             _pipeline = new TraceEventTriggerPipeline(eventSource, _trigger, _callback);
 

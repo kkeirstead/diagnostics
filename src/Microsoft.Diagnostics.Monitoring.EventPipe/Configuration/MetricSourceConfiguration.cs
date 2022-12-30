@@ -33,7 +33,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
     public sealed class MetricSourceConfiguration : MonitoringSourceConfiguration
     {
         private readonly IList<EventPipeProvider> _eventPipeProviders;
-        //public string SessionId { get; private set; }
+        public string SessionId { get; private set; }
 
         public MetricSourceConfiguration(float metricIntervalSeconds, IEnumerable<string> eventCounterProviderNames)
             : this(metricIntervalSeconds, CreateProviders(eventCounterProviderNames?.Any() == true ? eventCounterProviderNames : DefaultMetricProviders))
