@@ -109,29 +109,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
             }
             else
             {
-                if (!GreaterThan.HasValue && !LessThan.HasValue)
-                {
-                    results.Add(new ValidationResult(
-                        SharedTriggerSettingsConstants.EitherGreaterThanLessThanMessage,
-                        new[]
-                        {
-                        nameof(GreaterThan),
-                        nameof(LessThan)
-                        }));
-                }
-                else if (GreaterThan.HasValue && LessThan.HasValue)
-                {
-                    if (GreaterThan.Value >= LessThan.Value)
-                    {
-                        results.Add(new ValidationResult(
-                            SharedTriggerSettingsConstants.GreaterThanMustBeLessThanLessThanMessage,
-                            new[]
-                            {
-                            nameof(GreaterThan),
-                            nameof(LessThan)
-                            }));
-                    }
-                }
+                return SharedTriggerSettingsValidation.Validate(GreaterThan, LessThan);
             }
 
             return results;

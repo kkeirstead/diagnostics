@@ -15,7 +15,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
     {
         public ITraceEventTrigger Create(SystemDiagnosticsMetricsTriggerSettings settings)
         {
-            return new SystemDiagnosticsMetricsTrigger(settings, settings.SessionId);
+            return new SystemDiagnosticsMetricsTrigger(settings);
         }
     }
 }
