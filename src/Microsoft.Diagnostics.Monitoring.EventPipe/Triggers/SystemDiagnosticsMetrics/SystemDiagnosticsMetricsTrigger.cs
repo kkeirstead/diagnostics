@@ -35,16 +35,11 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
         private readonly string _providerName;
         private string _sessionId;
 
-        public SystemDiagnosticsMetricsTrigger(SystemDiagnosticsMetricsTriggerSettings settings, string sessionId)
+        public SystemDiagnosticsMetricsTrigger(SystemDiagnosticsMetricsTriggerSettings settings)
         {
             if (null == settings)
             {
                 throw new ArgumentNullException(nameof(settings));
-            }
-
-            if (null == sessionId)
-            {
-                throw new ArgumentNullException(nameof(sessionId));
             }
 
             Validate(settings);
@@ -56,7 +51,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
 
             _providerName = settings.ProviderName;
 
-            _sessionId = sessionId;
+            _sessionId = settings.SessionId;
         }
 
         public IReadOnlyDictionary<string, IReadOnlyCollection<string>> GetProviderEventMap()
@@ -75,11 +70,12 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
             return false;
         }
 
-        public static MonitoringSourceConfiguration CreateConfiguration(SystemDiagnosticsMetricsTriggerSettings settings)
+        public static MetricSourceConfiguration CreateConfiguration(ref SystemDiagnosticsMetricsTriggerSettings settings)
         {
             Validate(settings);
 
             var config = new MetricSourceConfiguration(settings.CounterIntervalSeconds, new string[] { settings.ProviderName }, 1000, 1000); // need to fix these values
+            settings.SessionId = config.SessionId;
 
             return config;
         }
