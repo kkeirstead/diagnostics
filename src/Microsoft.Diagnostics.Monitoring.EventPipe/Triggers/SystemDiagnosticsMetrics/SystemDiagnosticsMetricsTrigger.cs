@@ -8,7 +8,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
-using System.Runtime;
 
 namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsMetrics
 {
@@ -56,7 +55,6 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
 
         public IReadOnlyDictionary<string, IReadOnlyCollection<string>> GetProviderEventMap()
         {
-            //return null;
             return _eventMapCache.GetOrAdd(_providerName, CreateEventMapForProvider);
         }
 
@@ -74,7 +72,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
         {
             Validate(settings);
 
-            var config = new MetricSourceConfiguration(settings.CounterIntervalSeconds, new string[] { settings.ProviderName }, 1000, 1000); // need to fix these values
+            var config = new MetricSourceConfiguration(settings.CounterIntervalSeconds, new string[] { settings.ProviderName }, settings.MaxHistograms, settings.MaxTimeSeries);
             settings.SessionId = config.SessionId;
 
             return config;
