@@ -12,14 +12,23 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
+<<<<<<< HEAD:src/Microsoft.Diagnostics.Monitoring.EventPipe/Counters/MetricsPipeline.cs
     internal class MetricsPipeline : EventSourcePipeline<MetricsPipelineSettings>
+=======
+    internal class CounterPipeline : EventSourcePipeline<CounterPipelineSettings>
+>>>>>>> 308cffc3 (PR for feature branch):src/Microsoft.Diagnostics.Monitoring.EventPipe/Counters/CounterPipeline.cs
     {
         private readonly IEnumerable<ICountersLogger> _loggers;
         private readonly CounterFilter _filter;
         private string _sessionId;
 
+<<<<<<< HEAD:src/Microsoft.Diagnostics.Monitoring.EventPipe/Counters/MetricsPipeline.cs
         public MetricsPipeline(DiagnosticsClient client,
             MetricsPipelineSettings settings,
+=======
+        public CounterPipeline(DiagnosticsClient client,
+            CounterPipelineSettings settings,
+>>>>>>> 308cffc3 (PR for feature branch):src/Microsoft.Diagnostics.Monitoring.EventPipe/Counters/CounterPipeline.cs
             IEnumerable<ICountersLogger> loggers) : base(client, settings)
         {
             _loggers = loggers ?? throw new ArgumentNullException(nameof(loggers));
