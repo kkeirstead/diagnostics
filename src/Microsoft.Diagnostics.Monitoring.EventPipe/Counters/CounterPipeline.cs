@@ -6,6 +6,7 @@ using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Diagnostics.Tracing;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,6 +17,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         private readonly IEnumerable<ICountersLogger> _loggers;
         private readonly CounterFilter _filter;
         private string _sessionId;
+        private bool _includesNonDefaultProviders;
 
         public CounterPipeline(DiagnosticsClient client,
             CounterPipelineSettings settings,
@@ -28,7 +30,13 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 _filter = new CounterFilter(Settings.CounterIntervalSeconds);
                 foreach (var counterGroup in settings.CounterGroups)
                 {
-                    _filter.AddFilter(counterGroup.ProviderName, counterGroup.CounterNames);
+                    bool isNotDefault = !MonitoringSourceConfiguration.DefaultMetricProviders.Contains(counterGroup.ProviderName);
+
+                    _includesNonDefaultProviders = isNotDefault ? isNotDefault : _includesNonDefaultProviders;
+
+                    MetricsType? metricsType = isNotDefault ? counterGroup.MetricsType : MetricsType.EventCounter;
+
+                    _filter.AddFilter(counterGroup.ProviderName, counterGroup.CounterNames, metricsType);
                 }
             }
             else
@@ -54,7 +62,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             {
                 try
                 {
-                    if (traceEvent.TryGetCounterPayload(_filter, _sessionId, out List<ICounterPayload> counterPayload))
+                    if (traceEvent.TryGetCounterPayload(_filter, _sessionId, out List<ICounterPayload> counterPayload, _includesNonDefaultProviders))
                     {
                         ExecuteCounterLoggerAction((metricLogger) => {
                             foreach (var payload in counterPayload)

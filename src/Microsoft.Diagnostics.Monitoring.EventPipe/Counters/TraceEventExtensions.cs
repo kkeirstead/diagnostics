@@ -11,11 +11,11 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal static class TraceEventExtensions
     {
-        public static bool TryGetCounterPayload(this TraceEvent traceEvent, CounterFilter filter, string sessionId, out List<ICounterPayload> payload)
+        public static bool TryGetCounterPayload(this TraceEvent traceEvent, CounterFilter filter, string sessionId, out List<ICounterPayload> payload, bool includesNonDefaultProviders = false)
         {
             payload = new List<ICounterPayload>();
 
-            if ("EventCounters".Equals(traceEvent.EventName))
+            if ("EventCounters".Equals(traceEvent.EventName) && filter.IsMetricsType(MetricsType.EventCounter, traceEvent.ProviderName))
             {
                 IDictionary<string, object> payloadVal = (IDictionary<string, object>)(traceEvent.PayloadValue(0));
                 IDictionary<string, object> payloadFields = (IDictionary<string, object>)(payloadVal["Payload"]);
@@ -72,7 +72,18 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 return true;
             }
 
-            if (sessionId != null && "System.Diagnostics.Metrics".Equals(traceEvent.ProviderName))
+            bool isSysDiagMetrics;
+
+            try
+            {
+                string providerName = (string)traceEvent.PayloadValue(1);
+                isSysDiagMetrics = filter.IsMetricsType(MetricsType.SystemDiagnosticsMetrics, (string)traceEvent.PayloadValue(1));
+            }
+            catch (Exception) {
+                isSysDiagMetrics = filter.IsMetricsType(MetricsType.SystemDiagnosticsMetrics);
+            }
+
+            if (sessionId != null && "System.Diagnostics.Metrics".Equals(traceEvent.ProviderName) && isSysDiagMetrics)
             {
                 ICounterPayload individualPayload = null;
 
@@ -111,7 +122,10 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 }
                 else if (traceEvent.EventName == "MultipleSessionsNotSupportedError")
                 {
-                    HandleMultipleSessionsNotSupportedError(traceEvent, sessionId, out individualPayload);
+                    if (includesNonDefaultProviders)
+                    {
+                        HandleMultipleSessionsNotSupportedError(traceEvent, sessionId, out individualPayload);
+                    }
                 }
 
                 if (null != individualPayload)

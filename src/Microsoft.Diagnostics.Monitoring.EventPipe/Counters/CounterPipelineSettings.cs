@@ -25,5 +25,6 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
     {
         public string ProviderName { get; set; }
         public string[] CounterNames { get; set; }
+        public MetricsType? MetricsType { get; set; }
     }
 }

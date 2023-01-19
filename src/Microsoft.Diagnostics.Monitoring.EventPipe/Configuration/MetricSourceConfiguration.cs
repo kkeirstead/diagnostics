@@ -66,11 +66,11 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 new EventPipeProvider("System.Diagnostics.Metrics", EventLevel.Informational, TimeSeriesValues,
                     new Dictionary<string, string>()
                     {
-                        { "SessionId", SessionId },
-                        { "Metrics", metrics.ToString() },
-                        { "RefreshInterval", MetricIntervalSeconds.ToString() },
-                        { "MaxTimeSeries", maxTimeSeries.ToString() },
-                        { "MaxHistograms", maxHistograms.ToString() }
+                    { "SessionId", SessionId },
+                    { "Metrics", metrics.ToString() },
+                    { "RefreshInterval", MetricIntervalSeconds.ToString() },
+                    { "MaxTimeSeries", maxTimeSeries.ToString() },
+                    { "MaxHistograms", maxHistograms.ToString() }
                     }
                 );
 
