@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.Diagnostics.Tracing.Parsers.FrameworkEventSource;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -82,11 +81,9 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
             _windowTicks = settings.SlidingWindowDuration.Ticks;
         }
 
-        public bool HasSatisfiedCondition(List<ICounterPayload> payloadList)
+        public bool HasSatisfiedCondition(ICounterPayload payload)
         {
-            ICounterPayload firstPayload = payloadList[0];
-
-            EventType eventType = firstPayload.EventType;
+            EventType eventType = payload.EventType;
 
             if (eventType == EventType.Error)
             {
@@ -102,18 +99,20 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe.Triggers.SystemDiagnosticsM
                 {
                     Dictionary<string, double> payloadDict = new();
 
-                    // Convert payload list to dictionary
-                    payloadDict = payloadList.ToDictionary(keySelector: p => GetPercentile(p.Metadata).ToString(), elementSelector: p => p.Value);
+                    if (payload is PercentilePayload percentilePayload)
+                    {
+                        payloadDict = percentilePayload.Quantiles.ToDictionary(keySelector: p => p.Percentage.ToString(), elementSelector: p => p.Value);
+                    }
 
                     passesValueFilter = _valueFilterHistogram(payloadDict);
                 }
                 else
                 {
-                    passesValueFilter = _valueFilterDefault(firstPayload.Value);
+                    passesValueFilter = _valueFilterDefault(payload.Value);
                 }
 
-                long payloadTimestampTicks = firstPayload.Timestamp.Ticks;
-                long payloadIntervalTicks = (long)(firstPayload.Interval * TimeSpan.TicksPerSecond);
+                long payloadTimestampTicks = payload.Timestamp.Ticks;
+                long payloadIntervalTicks = (long)(payload.Interval * TimeSpan.TicksPerSecond);
 
                 if (!passesValueFilter)
                 {
