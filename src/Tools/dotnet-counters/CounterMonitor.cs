@@ -384,6 +384,7 @@ namespace Microsoft.Diagnostics.Tools.Counters
             }
             else
             {
+                Console.Error.WriteLine("HIT");
                 _renderer.CounterPayloadReceived(payload, _pauseCmdSet);
             }
         }

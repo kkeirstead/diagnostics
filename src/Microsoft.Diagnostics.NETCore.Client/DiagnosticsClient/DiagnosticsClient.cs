@@ -67,6 +67,15 @@ namespace Microsoft.Diagnostics.NETCore.Client
         /// </returns>
         public EventPipeSession StartEventPipeSession(IEnumerable<EventPipeProvider> providers, bool requestRundown = true, int circularBufferMB = 256)
         {
+            foreach (EventPipeProvider provider in providers)
+            {
+                Console.Error.WriteLine(provider);
+                Console.Error.WriteLine(requestRundown);
+                Console.Error.WriteLine(circularBufferMB);
+            }
+
+            Console.Error.WriteLine("-------");
+
             return EventPipeSession.Start(_endpoint, providers, requestRundown, circularBufferMB);
         }
 
@@ -96,6 +105,15 @@ namespace Microsoft.Diagnostics.NETCore.Client
         /// </returns>
         internal Task<EventPipeSession> StartEventPipeSessionAsync(IEnumerable<EventPipeProvider> providers, bool requestRundown, int circularBufferMB, CancellationToken token)
         {
+            foreach (EventPipeProvider provider in providers)
+            {
+                Console.Error.WriteLine(provider);
+                Console.Error.WriteLine(requestRundown);
+                Console.Error.WriteLine(circularBufferMB);
+            }
+
+            Console.Error.WriteLine("-------");
+
             return EventPipeSession.StartAsync(_endpoint, providers, requestRundown, circularBufferMB, token);
         }
 

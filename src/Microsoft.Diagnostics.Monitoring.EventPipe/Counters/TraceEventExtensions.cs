@@ -25,6 +25,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
                 string metadata = payloadFields["Metadata"].ToString();
 
+                Console.Error.WriteLine("ProviderName: " + traceEvent.ProviderName + " | CounterName: " + counterName);
+
                 //CONSIDER
                 //Concurrent counter sessions do not each get a separate interval. Instead the payload
                 //for _all_ the counters changes the Series to be the lowest specified interval, on a per provider basis.
