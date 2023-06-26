@@ -123,6 +123,11 @@ namespace Microsoft.Diagnostics.NETCore.Client
         public static async Task<IpcMessage> ParseAsync(Stream stream, CancellationToken cancellationToken)
         {
             IpcMessage message = new();
+
+            //byte[] myArray = new byte[10000];
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
+            //_ = await stream.ReadAsync(myArray, 0, 10000, cancellationToken);
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
             message.Header = await IpcHeader.ParseAsync(stream, cancellationToken).ConfigureAwait(false);
             message.Payload = await stream.ReadBytesAsync(message.Header.Size - IpcHeader.HeaderSizeInBytes, cancellationToken).ConfigureAwait(false);
             return message;

@@ -305,11 +305,19 @@ namespace Microsoft.Diagnostics.NETCore.Client
             ValidateResponseMessage(response, nameof(ApplyStartupHook));
         }
 
-        internal async Task ApplyStartupHookAsync(string startupHookPath, CancellationToken token)
+        public async Task ApplyStartupHookAsync(string startupHookPath, CancellationToken token)
         {
-            IpcMessage message = CreateApplyStartupHookMessage(startupHookPath);
-            IpcMessage response = await IpcClient.SendMessageAsync(_endpoint, message, token).ConfigureAwait(false);
-            ValidateResponseMessage(response, nameof(ApplyStartupHookAsync));
+            try
+            {
+                IpcMessage message = CreateApplyStartupHookMessage(startupHookPath);
+                IpcMessage response = await IpcClient.SendMessageAsync(_endpoint, message, token).ConfigureAwait(false);
+                ValidateResponseMessage(response, nameof(ApplyStartupHookAsync));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
         }
 
         /// <summary>
