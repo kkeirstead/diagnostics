@@ -305,7 +305,7 @@ namespace Microsoft.Diagnostics.NETCore.Client
             return ValidateResponseMessage(response, nameof(ApplyStartupHook));
         }
 
-        public async Task<bool> ApplyStartupHookAsync(string startupHookPath, CancellationToken token)
+        internal async Task<bool> ApplyStartupHookAsync(string startupHookPath, CancellationToken token)
         {
             IpcMessage message = CreateApplyStartupHookMessage(startupHookPath);
             IpcMessage response = await IpcClient.SendMessageAsync(_endpoint, message, token).ConfigureAwait(false);
