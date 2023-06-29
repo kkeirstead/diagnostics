@@ -298,18 +298,18 @@ namespace Microsoft.Diagnostics.NETCore.Client
             return await helper.ReadEnvironmentAsync(response.Continuation, token).ConfigureAwait(false);
         }
 
-        internal bool ApplyStartupHook(string startupHookPath)
+        internal void ApplyStartupHook(string startupHookPath)
         {
             IpcMessage message = CreateApplyStartupHookMessage(startupHookPath);
             IpcMessage response = IpcClient.SendMessage(_endpoint, message);
-            return ValidateResponseMessage(response, nameof(ApplyStartupHook));
+            ValidateResponseMessage(response, nameof(ApplyStartupHook));
         }
 
-        internal async Task<bool> ApplyStartupHookAsync(string startupHookPath, CancellationToken token)
+        internal async Task ApplyStartupHookAsync(string startupHookPath, CancellationToken token)
         {
             IpcMessage message = CreateApplyStartupHookMessage(startupHookPath);
             IpcMessage response = await IpcClient.SendMessageAsync(_endpoint, message, token).ConfigureAwait(false);
-            return ValidateResponseMessage(response, nameof(ApplyStartupHookAsync));
+            ValidateResponseMessage(response, nameof(ApplyStartupHookAsync));
         }
 
         /// <summary>
