@@ -25,7 +25,7 @@ namespace Microsoft.Diagnostics.Tools.Counters
     {
         private const int BufferDelaySecs = 1;
         private const string SharedSessionId = "SHARED"; // This should be identical to the one used by dotnet-monitor in MetricSourceConfiguration.cs
-        private static HashSet<string> inactiveSharedSessions = new();
+        private static HashSet<string> inactiveSharedSessions = new(StringComparer.OrdinalIgnoreCase);
 
         private string _sessionId;
         private int _processId;
@@ -891,7 +891,7 @@ namespace Microsoft.Diagnostics.Tools.Counters
 
             // Shared Session Id was added in 8.0 - older runtimes will not properly support it.
             _sessionId = Guid.NewGuid().ToString();
-            if (_diagnosticsClient.TryParseVersion(out Version version))
+            if (_diagnosticsClient.GetProcessInfo().TryGetProcessClrVersion(out Version version))
             {
                 _sessionId = version.Major >= 8 ? SharedSessionId : _sessionId;
             }

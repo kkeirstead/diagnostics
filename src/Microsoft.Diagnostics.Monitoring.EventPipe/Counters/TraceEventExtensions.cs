@@ -11,7 +11,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
     internal static class TraceEventExtensions
     {
-        private static IDictionary<string, bool> inactiveSharedSessions = new Dictionary<string, bool>();
+        private static HashSet<string> inactiveSharedSessions = new(StringComparer.OrdinalIgnoreCase);
 
         public static bool TryGetCounterPayload(this TraceEvent traceEvent, CounterFilter filter, string sessionId, string clientId, out ICounterPayload payload)
         {
@@ -74,7 +74,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
                 return true;
             }
 
-            if (clientId != null && !inactiveSharedSessions.ContainsKey(clientId) && MonitoringSourceConfiguration.SystemDiagnosticsMetricsProviderName.Equals(traceEvent.ProviderName))
+            if (clientId != null && !inactiveSharedSessions.Contains(clientId) && MonitoringSourceConfiguration.SystemDiagnosticsMetricsProviderName.Equals(traceEvent.ProviderName))
             {
                 if (traceEvent.EventName == "BeginInstrumentReporting")
                 {
@@ -374,7 +374,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
 
             payload = new ErrorPayload(errorMessage.ToString(), obj.TimeStamp);
 
-            inactiveSharedSessions.Add(payloadSessionId, true);
+            inactiveSharedSessions.Add(payloadSessionId);
         }
 
         private static void HandleObservableInstrumentCallbackError(TraceEvent obj, string sessionId, out ICounterPayload payload)
