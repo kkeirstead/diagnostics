@@ -33,6 +33,34 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
             int Row { get; set; }
         }
 
+        public class ConsoleWrapper : IConsoleWrapper
+        {
+            public int WindowWidth { get; set; } = Console.WindowWidth;
+            public int WindowHeight { get; set; } = Console.WindowHeight;
+            public int CursorTop { get; set; } = Console.CursorTop;
+            public int BufferWidth { get; set; } = Console.BufferWidth;
+
+            public void Write(string data) => Console.Write(data);
+            public void WriteLine() => Console.WriteLine();
+            public void WriteLine(string errorText) => Console.WriteLine(errorText);
+            public void SetCursorPosition(int col, int row) => Console.SetCursorPosition(col, row);
+            public void Clear() => Console.Clear();
+        }
+
+        public interface IConsoleWrapper
+        {
+            public int WindowWidth { get; set; }
+            public int WindowHeight { get; set; }
+            public int CursorTop { get; set; }
+            public int BufferWidth { get; set; }
+
+            public void Write(string data);
+            public void WriteLine();
+            public void WriteLine(string errorText);
+            public void SetCursorPosition(int col, int row);
+            public void Clear();
+        }
+
         /// <summary>Information about an observed counter.</summary>
         private class ObservedCounter : ICounterRow
         {
@@ -76,9 +104,12 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
         private int _consoleHeight = -1;
         private int _consoleWidth = -1;
 
-        public ConsoleWriter(bool useAnsi)
+        private IConsoleWrapper MyConsoleWriter;
+
+        public ConsoleWriter(bool useAnsi, IConsoleWrapper consoleWrapper = null)
         {
             _useAnsi = useAnsi;
+            MyConsoleWriter = consoleWrapper ?? new ConsoleWrapper();
         }
 
         public void Initialize()
@@ -101,11 +132,11 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
         {
             if (_useAnsi)
             {
-                Console.Write($"\u001b[{row + 1 - _topRow};{col + 1}H");
+                MyConsoleWriter.Write($"\u001b[{row + 1 - _topRow};{col + 1}H");
             }
             else
             {
-                Console.SetCursorPosition(col, row);
+                MyConsoleWriter.SetCursorPosition(col, row);
             }
         }
 
@@ -113,17 +144,17 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
         {
             if (_useAnsi)
             {
-                Console.Write($"\u001b[H\u001b[J");
+                MyConsoleWriter.Write($"\u001b[H\u001b[J");
             }
             else
             {
-                Console.Clear();
+                MyConsoleWriter.Clear();
             }
         }
         private void UpdateStatus()
         {
             SetCursorPosition(0, _statusRow);
-            Console.Write($"    Status: {GetStatus()}{new string(' ', 40)}"); // Write enough blanks to clear previous status.
+            MyConsoleWriter.Write($"    Status: {GetStatus()}{new string(' ', 40)}"); // Write enough blanks to clear previous status.
         }
 
         private string GetStatus() => !_initialized ? "Waiting for initial payload..." : (_paused ? "Paused" : "Running");
@@ -146,20 +177,20 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
                 }
             }
 
-            _consoleWidth = Console.WindowWidth;
-            _consoleHeight = Console.WindowHeight;
+            _consoleWidth = MyConsoleWriter.WindowWidth;
+            _consoleHeight = MyConsoleWriter.WindowHeight;
             _maxNameLength = Math.Max(Math.Min(80, _consoleWidth) - (CounterValueLength + Indent + 1), 0); // Truncate the name to prevent line wrapping as long as the console width is >= CounterValueLength + Indent + 1 characters
 
 
-            int row = Console.CursorTop;
+            int row = MyConsoleWriter.CursorTop;
             _topRow = row;
 
             string instructions = "Press p to pause, r to resume, q to quit.";
-            Console.WriteLine((instructions.Length < _consoleWidth) ? instructions : instructions.Substring(0, _consoleWidth)); row++;
-            Console.WriteLine($"    Status: {GetStatus()}"); _statusRow = row++;
+            MyConsoleWriter.WriteLine((instructions.Length < _consoleWidth) ? instructions : instructions.Substring(0, _consoleWidth)); row++;
+            MyConsoleWriter.WriteLine($"    Status: {GetStatus()}"); _statusRow = row++;
             if (_errorText != null)
             {
-                Console.WriteLine(_errorText);
+                MyConsoleWriter.WriteLine(_errorText);
                 row += GetLineWrappedLines(_errorText);
             }
 
@@ -172,12 +203,12 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
 
                 if (lineOutput != null)
                 {
-                    Console.Write(lineOutput);
+                    MyConsoleWriter.Write(lineOutput);
                 }
 
                 if (row < _consoleHeight + _topRow - 1) // prevents screen from scrolling due to newline on last line of console
                 {
-                    Console.WriteLine();
+                    MyConsoleWriter.WriteLine();
                 }
 
                 if (counterRow != null)
@@ -289,7 +320,7 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
                     redraw = true;
                 }
 
-                if (Console.WindowWidth != _consoleWidth || Console.WindowHeight != _consoleHeight)
+                if (MyConsoleWriter.WindowWidth != _consoleWidth || MyConsoleWriter.WindowHeight != _consoleHeight)
                 {
                     redraw = true;
                 }
@@ -305,7 +336,7 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
                     return;
                 }
                 SetCursorPosition(Indent + _maxNameLength + 1, row);
-                Console.Write(FormatValue(payload.Value));
+                MyConsoleWriter.Write(FormatValue(payload.Value));
             }
         }
 
@@ -351,11 +382,11 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
             }
         }
 
-        private static int GetLineWrappedLines(string text)
+        private int GetLineWrappedLines(string text)
         {
             string[] lines = text.Split(Environment.NewLine);
             int lineCount = lines.Length;
-            int width = Console.BufferWidth;
+            int width = MyConsoleWriter.BufferWidth;
             foreach (string line in lines)
             {
                 lineCount += (int)Math.Floor(((float)line.Length) / width);
@@ -430,7 +461,7 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
                     if (row > -1)
                     {
                         SetCursorPosition(0, row);
-                        Console.WriteLine();
+                        MyConsoleWriter.WriteLine();
                     }
                 }
             }

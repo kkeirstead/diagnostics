@@ -18,6 +18,9 @@ using Xunit.Abstractions;
 using Xunit.Extensions;
 using TestRunner = Microsoft.Diagnostics.CommonTestRunner.TestRunner;
 using Constants = DotnetCounters.UnitTests.CounterMonitorPayloadTestsConstants;
+using static Microsoft.Diagnostics.Tools.Counters.Exporters.ConsoleWriter;
+using System.Text;
+using Microsoft.Diagnostics.Tools.Counters.Exporters;
 
 namespace DotnetCounters.UnitTests
 {
@@ -26,6 +29,21 @@ namespace DotnetCounters.UnitTests
     /// </summary>
     public class CounterMonitorPayloadTests
     {
+        public class TestConsoleWrapper : IConsoleWrapper
+        {
+            public StringBuilder builder = new(); 
+            public int WindowWidth { get => 100; set => throw new NotImplementedException(); }
+            public int WindowHeight { get => 100; set => throw new NotImplementedException(); }
+            public int CursorTop { get => 100; set => throw new NotImplementedException(); }
+            public int BufferWidth { get => 100; set => throw new NotImplementedException(); }
+
+            public void Clear() => builder.AppendLine("Clear");
+            public void SetCursorPosition(int col, int row) => builder.AppendLine("SetCursorPosition");
+            public void Write(string data) => builder.AppendLine("Write");
+            public void WriteLine() => builder.AppendLine("WriteLine");
+            public void WriteLine(string errorText) => builder.AppendLine("WriteLine");
+        }
+
         private ITestOutputHelper _outputHelper;
         private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(2);
         private static readonly string SystemRuntimeName = "System.Runtime";
@@ -75,6 +93,7 @@ namespace DotnetCounters.UnitTests
             return;
         }
 
+
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task TestCounterMonitorSystemRuntimeMetrics(TestConfiguration configuration)
     {
@@ -86,6 +105,21 @@ namespace DotnetCounters.UnitTests
             string[] ExpectedCounterTypes = { Metric, Rate };
             Assert.Equal(ExpectedCounterTypes, trace.events.Select(e => e.counterType).Distinct());
 
+            return;
+        }
+
+        [SkippableTheory, MemberData(nameof(Configurations))]
+        public async Task TestCounterMonitorSystemRuntimeMetrics_Monitor(TestConfiguration configuration)
+        {
+            await GetCounterTrace_Monitor(configuration, new List<string> { SystemRuntimeName });
+
+            /*
+            Assert.NotEmpty(trace.events);
+            Assert.Equal(25, trace.events.Select(e => e.name).Distinct().Count());
+
+            string[] ExpectedCounterTypes = { Metric, Rate };
+            Assert.Equal(ExpectedCounterTypes, trace.events.Select(e => e.counterType).Distinct());
+            */
             return;
         }
 
@@ -118,6 +152,56 @@ namespace DotnetCounters.UnitTests
                             maxTimeSeries: 10,
                             duration: TimeSpan.FromSeconds(10)));
                 }, testRunner, source.Token);
+
+                using FileStream metricsFile = File.OpenRead(path);
+
+                JSONCounterTrace trace = JsonSerializer.Deserialize<JSONCounterTrace>(metricsFile, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                return trace;
+            }
+            finally
+            {
+                try
+                {
+                    File.Delete(path);
+                }
+                catch { }
+            }
+        }
+
+        private async Task<JSONCounterTrace> GetCounterTrace_Monitor(TestConfiguration configuration, List<string> counterList)
+        {
+            CounterMonitor monitor = new CounterMonitor();
+            string path = Path.ChangeExtension(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()), "json");
+
+            TestConsoleWrapper wrapper = new();
+
+            try
+            {
+                using CancellationTokenSource source = new CancellationTokenSource(DefaultTimeout);
+
+                await using var testRunner = await TestRunnerUtilities.StartProcess(configuration, "TestCounterMonitor DiagMetrics", _outputHelper);
+
+                await TestRunnerUtilities.ExecuteCollection((ct) => {
+                    return Task.Run(async () =>
+                        await monitor.Monitor(
+                            ct: ct,
+                            counter_list: counterList,
+                            counters: null,
+                            console: new TestConsole(),
+                            processId: testRunner.Pid,
+                            refreshInterval: 1,
+                            name: null,
+                            diagnosticPort: null,
+                            resumeRuntime: false,
+                            maxHistograms: 10,
+                            maxTimeSeries: 10,
+                            duration: TimeSpan.FromSeconds(10),
+                            consoleWrapper: wrapper
+                            ));
+                }, testRunner, source.Token);
+
+                Console.WriteLine(wrapper.builder.ToString());
 
                 using FileStream metricsFile = File.OpenRead(path);
 

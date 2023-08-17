@@ -11,6 +11,7 @@ using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Diagnostics.Tools.Counters.Exporters;
 using Microsoft.Diagnostics.Tracing;
 using Microsoft.Internal.Common.Utils;
+using static Microsoft.Diagnostics.Tools.Counters.Exporters.ConsoleWriter;
 
 namespace Microsoft.Diagnostics.Tools.Counters
 {
@@ -525,6 +527,47 @@ namespace Microsoft.Diagnostics.Tools.Counters
             int maxTimeSeries,
             TimeSpan duration)
         {
+            // PROTOTYPING ONLY
+            Task<int> monitor = Monitor(
+                ct,
+                counter_list,
+                counters,
+                console,
+                processId,
+                refreshInterval,
+                name, diagnosticPort,
+                resumeRuntime, maxHistograms,
+                maxTimeSeries,
+                duration,
+                new ConsoleWrapper());
+
+            await monitor.ConfigureAwait(false);
+            return monitor.Result;
+        }
+
+        internal async Task<int> Monitor(
+            CancellationToken ct,
+            List<string> counter_list,
+            string counters,
+            IConsole console,
+            int processId,
+            int refreshInterval,
+            string name,
+            string diagnosticPort,
+            bool resumeRuntime,
+            int maxHistograms,
+            int maxTimeSeries,
+            TimeSpan duration,
+            IConsoleWrapper consoleWrapper)
+        {
+            /*
+            StringWriter stringWriter = new();
+            Console.SetOut(stringWriter);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                //Console.SetWindowSize(100, 100); // TESTING ONLY
+            }*/
+
             try
             {
                 // System.CommandLine does have an option to specify arguments as uint and it would validate they are non-negative. However the error
@@ -558,7 +601,7 @@ namespace Microsoft.Diagnostics.Tools.Counters
                         _interval = refreshInterval;
                         _maxHistograms = maxHistograms;
                         _maxTimeSeries = maxTimeSeries;
-                        _renderer = new ConsoleWriter(useAnsi);
+                        _renderer = new ConsoleWriter(useAnsi, consoleWrapper: consoleWrapper);
                         _diagnosticsClient = holder.Client;
                         _resumeRuntime = resumeRuntime;
                         _duration = duration;
