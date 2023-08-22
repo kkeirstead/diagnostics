@@ -560,14 +560,6 @@ namespace Microsoft.Diagnostics.Tools.Counters
             TimeSpan duration,
             IConsoleWrapper consoleWrapper)
         {
-            /*
-            StringWriter stringWriter = new();
-            Console.SetOut(stringWriter);
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                //Console.SetWindowSize(100, 100); // TESTING ONLY
-            }*/
-
             try
             {
                 // System.CommandLine does have an option to specify arguments as uint and it would validate they are non-negative. However the error

@@ -31,17 +31,26 @@ namespace DotnetCounters.UnitTests
     {
         public class TestConsoleWrapper : IConsoleWrapper
         {
-            public StringBuilder builder = new(); 
+            public StringBuilder builder = new();
             public int WindowWidth { get => 100; set => throw new NotImplementedException(); }
             public int WindowHeight { get => 100; set => throw new NotImplementedException(); }
             public int CursorTop { get => 100; set => throw new NotImplementedException(); }
             public int BufferWidth { get => 100; set => throw new NotImplementedException(); }
 
             public void Clear() => builder.AppendLine("Clear");
-            public void SetCursorPosition(int col, int row) => builder.AppendLine("SetCursorPosition");
-            public void Write(string data) => builder.AppendLine("Write");
+            public void SetCursorPosition(int col, int row) => builder.AppendLine($"SetCursorPosition {col} {row}");
+            public void Write(string data) {
+                if (double.TryParse(data, out _))
+                {
+                    builder.AppendLine($"Write value");
+                }
+                else
+                {
+                    builder.AppendLine($"Write {data}");
+                }
+            }
             public void WriteLine() => builder.AppendLine("WriteLine");
-            public void WriteLine(string errorText) => builder.AppendLine("WriteLine");
+            public void WriteLine(string errorText) => builder.AppendLine($"WriteLine {errorText}");
         }
 
         private ITestOutputHelper _outputHelper;
@@ -113,13 +122,18 @@ namespace DotnetCounters.UnitTests
         {
             await GetCounterTrace_Monitor(configuration, new List<string> { SystemRuntimeName });
 
-            /*
-            Assert.NotEmpty(trace.events);
-            Assert.Equal(25, trace.events.Select(e => e.name).Distinct().Count());
+            return;
+        }
 
-            string[] ExpectedCounterTypes = { Metric, Rate };
-            Assert.Equal(ExpectedCounterTypes, trace.events.Select(e => e.counterType).Distinct());
-            */
+        [SkippableTheory, MemberData(nameof(Configurations))]
+        public async Task TestCounterMonitorCustomMetrics_Monitor(TestConfiguration configuration)
+        {
+            if (configuration.BuildProjectFramework != "net8.0")
+            {
+                throw new SkipTestException("Inapplicable framework");
+            }
+
+            await GetCounterTrace_Monitor(configuration, new List<string> { Constants.TestMeterName });
             return;
         }
 
