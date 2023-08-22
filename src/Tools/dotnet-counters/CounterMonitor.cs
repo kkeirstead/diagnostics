@@ -215,6 +215,39 @@ namespace Microsoft.Diagnostics.Tools.Counters
             int maxTimeSeries,
             TimeSpan duration)
         {
+            // PROTOTYPING ONLY
+            Task<ReturnCode> monitor = Monitor(
+                ct,
+                counter_list,
+                counters,
+                console,
+                processId,
+                refreshInterval,
+                name, diagnosticPort,
+                resumeRuntime, maxHistograms,
+                maxTimeSeries,
+                duration,
+                new ConsoleWriter.ConsoleWrapper());
+
+            await monitor.ConfigureAwait(false);
+            return monitor.Result;
+        }
+
+        internal async Task<ReturnCode> Monitor(
+            CancellationToken ct,
+            List<string> counter_list,
+            string counters,
+            IConsole console,
+            int processId,
+            int refreshInterval,
+            string name,
+            string diagnosticPort,
+            bool resumeRuntime,
+            int maxHistograms,
+            int maxTimeSeries,
+            TimeSpan duration,
+            ConsoleWriter.IConsoleWrapper consoleWrapper)
+        {
             try
             {
                 // System.CommandLine does have an option to specify arguments as uint and it would validate they are non-negative. However the error
@@ -245,7 +278,7 @@ namespace Microsoft.Diagnostics.Tools.Counters
                         // provider list so we need to ignore it in that case
                         _counterList = ConfigureCounters(counters, _processId != 0 ? counter_list : null);
                         _ct = ct;
-                        _renderer = new ConsoleWriter(useAnsi);
+                        _renderer = new ConsoleWriter(useAnsi, consoleWrapper: consoleWrapper);
                         _diagnosticsClient = holder.Client;
                         _settings = new MetricsPipelineSettings();
                         _settings.Duration = duration == TimeSpan.Zero ? Timeout.InfiniteTimeSpan : duration;
