@@ -269,5 +269,14 @@ namespace DotnetCounters.UnitTests
                 File.Delete(fileName);
             }
         }
+
+        internal static void ValidateHeaderTokens(string headerLine)
+        {
+            string[] headerTokens = headerLine.Split(',');
+            Assert.Equal("Provider", headerTokens[TestConstants.ProviderIndex]);
+            Assert.Equal("Counter Name", headerTokens[TestConstants.CounterNameIndex]);
+            Assert.Equal("Counter Type", headerTokens[TestConstants.CounterTypeIndex]);
+            Assert.Equal("Mean/Increment", headerTokens[TestConstants.ValueIndex]);
+        }
     }
 }

@@ -15,7 +15,6 @@ namespace EventPipeTracee
     internal static class Program
     {
         private const string AppLoggerCategoryName = "AppLoggerCategory";
-
         public static int Main(string[] args)
         {
             int pid = Process.GetCurrentProcess().Id;
@@ -43,7 +42,6 @@ namespace EventPipeTracee
             pipeStream.Connect(5 * 60 * 1000);
             Console.WriteLine($"{pid} EventPipeTracee: connected to pipe");
             Console.Out.Flush();
-
             ServiceCollection serviceCollection = new();
             serviceCollection.AddLogging(builder => {
                 builder.AddEventSourceLogger();
@@ -51,30 +49,25 @@ namespace EventPipeTracee
                 builder.AddFilter(null, LogLevel.Error); // Default
                 builder.AddFilter(AppLoggerCategoryName, LogLevel.Warning);
             });
-
             using ILoggerFactory loggerFactory = serviceCollection.BuildServiceProvider().GetService<ILoggerFactory>();
             ILogger customCategoryLogger = loggerFactory.CreateLogger(loggerCategory);
             ILogger appCategoryLogger = loggerFactory.CreateLogger(AppLoggerCategoryName);
-
             Console.WriteLine($"{pid} EventPipeTracee: {DateTime.UtcNow} Awaiting start");
             Console.Out.Flush();
-
-            using CustomMetrics metrics = diagMetrics ? new CustomMetrics() : null;
-
             // Wait for server to send something
             int input = pipeStream.ReadByte();
-
             Console.WriteLine($"{pid} {DateTime.UtcNow} Starting test body '{input}'");
             Console.Out.Flush();
 
             if (diagMetrics)
             {
+                using CustomMetrics metrics = new();
+
                 _ = Task.Run(async () => {
                     metrics.IncrementCounter();
                     metrics.RecordHistogram(10.0f);
                     await Task.Delay(10).ConfigureAwait(true);
                 }).ConfigureAwait(true);
-
             }
 
             TestBodyCore(customCategoryLogger, appCategoryLogger);
