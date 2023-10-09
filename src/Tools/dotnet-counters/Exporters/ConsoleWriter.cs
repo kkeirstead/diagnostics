@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using Microsoft.Diagnostics.Monitoring.EventPipe;
 
 namespace Microsoft.Diagnostics.Tools.Counters.Exporters
@@ -24,6 +25,9 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
                 KnownData.TryGetProvider(name, out KnownProvider);
             }
 
+            public string InstrumentTags { get; }
+            public string MeterTags { get; }
+            public string MeterScopeHash { get; }
             public string Name { get; } // Name of the category.
             public Dictionary<string, ObservedCounter> Counters { get; } = new Dictionary<string, ObservedCounter>(); // Counters in this category.
             public readonly CounterProvider KnownProvider;
@@ -258,9 +262,10 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
                     return;
                 }
 
-                string providerName = payload.Provider;
+                string providerName = payload.Provider.ProviderName;
                 string name = payload.Name;
-                string tags = payload.Metadata;
+
+                string tags = payload.CombineTags();
 
                 bool redraw = false;
                 if (!_providers.TryGetValue(providerName, out ObservedProvider provider))
@@ -314,7 +319,7 @@ namespace Microsoft.Diagnostics.Tools.Counters.Exporters
         {
             lock (_lock)
             {
-                string providerName = payload.Provider;
+                string providerName = payload.Provider.ProviderName;
                 string counterName = payload.Name;
                 string tags = payload.Metadata;
 
