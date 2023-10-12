@@ -26,7 +26,7 @@ namespace DotnetCounters.UnitTests
             DateTime start = DateTime.Now;
             for (int i = 0; i < 100; i++)
             {
-                exporter.CounterPayloadReceived(new RatePayload("myProvider", "incrementingCounterOne", "Incrementing Counter One", string.Empty, string.Empty, i, 1, start + TimeSpan.FromSeconds(i)), false);
+                exporter.CounterPayloadReceived(new RatePayload(new Provider("myProvider", null, null, null), "incrementingCounterOne", "Incrementing Counter One", string.Empty, string.Empty, i, 1, start + TimeSpan.FromSeconds(i)), false);
             }
             exporter.Stop();
 
@@ -37,11 +37,7 @@ namespace DotnetCounters.UnitTests
                 List<string> lines = File.ReadLines(fileName).ToList();
                 Assert.Equal(101, lines.Count); // should be 101 including the headers
 
-                string[] headerTokens = lines[0].Split(',');
-                Assert.Equal("Provider", headerTokens[1]);
-                Assert.Equal("Counter Name", headerTokens[2]);
-                Assert.Equal("Counter Type", headerTokens[3]);
-                Assert.Equal("Mean/Increment", headerTokens[4]);
+                ValidateHeaderTokens(lines[0]);
 
                 for (int i = 1; i < lines.Count; i++)
                 {
@@ -68,7 +64,7 @@ namespace DotnetCounters.UnitTests
             DateTime start = DateTime.Now;
             for (int i = 0; i < 10; i++)
             {
-                exporter.CounterPayloadReceived(new GaugePayload("myProvider", "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
+                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", null, null, null), "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
             }
             exporter.Stop();
 
@@ -79,12 +75,7 @@ namespace DotnetCounters.UnitTests
                 List<string> lines = File.ReadLines(fileName).ToList();
                 Assert.Equal(11, lines.Count); // should be 11 including the headers
 
-                string[] headerTokens = lines[0].Split(',');
-                Assert.Equal("Provider", headerTokens[1]);
-                Assert.Equal("Counter Name", headerTokens[2]);
-                Assert.Equal("Counter Type", headerTokens[3]);
-                Assert.Equal("Mean/Increment", headerTokens[4]);
-
+                ValidateHeaderTokens(lines[0]);
 
                 for (int i = 1; i < lines.Count; i++)
                 {
@@ -92,6 +83,176 @@ namespace DotnetCounters.UnitTests
 
                     Assert.Equal("myProvider", tokens[1]);
                     Assert.Equal("Counter One", tokens[2]);
+                    Assert.Equal("Metric", tokens[3]);
+                    Assert.Equal((i - 1).ToString(), tokens[4]);
+                }
+            }
+            finally
+            {
+                File.Delete(fileName);
+            }
+        }
+
+        [Fact]
+        public void CounterTest_MeterTags()
+        {
+            string fileName = "CounterTest.csv";
+            CSVExporter exporter = new(fileName);
+            exporter.Initialize();
+            DateTime start = DateTime.Now;
+
+            string meterTags = "MeterTagKey=MeterTagValue,MeterTagKey2=MeterTagValue2";
+            string scopeHash = "123";
+
+            for (int i = 0; i < 10; i++)
+            {
+                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", meterTags, null, scopeHash), "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
+            }
+            exporter.Stop();
+
+            Assert.True(File.Exists(fileName));
+
+            try
+            {
+                List<string> lines = File.ReadLines(fileName).ToList();
+                Assert.Equal(11, lines.Count); // should be 11 including the headers
+
+                ValidateHeaderTokens(lines[0]);
+
+                for (int i = 1; i < lines.Count; i++)
+                {
+                    string[] tokens = lines[i].Split(',');
+
+                    Assert.Equal("myProvider", tokens[1]);
+                    Assert.Equal("Counter One[MeterTagKey=MeterTagValue;MeterTagKey2=MeterTagValue2]", tokens[2]);
+                    Assert.Equal("Metric", tokens[3]);
+                    Assert.Equal((i - 1).ToString(), tokens[4]);
+                }
+            }
+            finally
+            {
+                File.Delete(fileName);
+            }
+        }
+
+        [Fact]
+        public void CounterTest_InstrumentTags()
+        {
+            string fileName = "CounterTest.csv";
+            CSVExporter exporter = new(fileName);
+            exporter.Initialize();
+            DateTime start = DateTime.Now;
+
+            string instrumentTags = "InstrumentTagKey=InstrumentTagValue,InstrumentTagKey2=InstrumentTagValue2";
+            string scopeHash = "123";
+
+            for (int i = 0; i < 10; i++)
+            {
+                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", null, instrumentTags, scopeHash), "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
+            }
+            exporter.Stop();
+
+            Assert.True(File.Exists(fileName));
+
+            try
+            {
+                List<string> lines = File.ReadLines(fileName).ToList();
+                Assert.Equal(11, lines.Count); // should be 11 including the headers
+
+                ValidateHeaderTokens(lines[0]);
+
+                for (int i = 1; i < lines.Count; i++)
+                {
+                    string[] tokens = lines[i].Split(',');
+
+                    Assert.Equal("myProvider", tokens[1]);
+                    Assert.Equal("Counter One[InstrumentTagKey=InstrumentTagValue;InstrumentTagKey2=InstrumentTagValue2]", tokens[2]);
+                    Assert.Equal("Metric", tokens[3]);
+                    Assert.Equal((i - 1).ToString(), tokens[4]);
+                }
+            }
+            finally
+            {
+                File.Delete(fileName);
+            }
+        }
+
+        [Fact]
+        public void CounterTest_MeterInstrumentTags()
+        {
+            string fileName = "CounterTest.csv";
+            CSVExporter exporter = new(fileName);
+            exporter.Initialize();
+            DateTime start = DateTime.Now;
+
+            string meterTags = "MeterTagKey=MeterTagValue,MeterTagKey2=MeterTagValue2";
+            string instrumentTags = "InstrumentTagKey=InstrumentTagValue,InstrumentTagKey2=InstrumentTagValue2";
+            string scopeHash = "123";
+
+            for (int i = 0; i < 10; i++)
+            {
+                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", meterTags, instrumentTags, scopeHash), "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
+            }
+            exporter.Stop();
+
+            Assert.True(File.Exists(fileName));
+
+            try
+            {
+                List<string> lines = File.ReadLines(fileName).ToList();
+                Assert.Equal(11, lines.Count); // should be 11 including the headers
+
+                ValidateHeaderTokens(lines[0]);
+
+                for (int i = 1; i < lines.Count; i++)
+                {
+                    string[] tokens = lines[i].Split(',');
+
+                    Assert.Equal("myProvider", tokens[1]);
+                    Assert.Equal("Counter One[MeterTagKey=MeterTagValue;MeterTagKey2=MeterTagValue2;InstrumentTagKey=InstrumentTagValue;InstrumentTagKey2=InstrumentTagValue2]", tokens[2]);
+                    Assert.Equal("Metric", tokens[3]);
+                    Assert.Equal((i - 1).ToString(), tokens[4]);
+                }
+            }
+            finally
+            {
+                File.Delete(fileName);
+            }
+        }
+
+        [Fact]
+        public void CounterTest_AllTags()
+        {
+            string fileName = "CounterTest.csv";
+            CSVExporter exporter = new(fileName);
+            exporter.Initialize();
+            DateTime start = DateTime.Now;
+
+            string meterTags = "MeterTagKey=MeterTagValue,MeterTagKey2=MeterTagValue2";
+            string instrumentTags = "InstrumentTagKey=InstrumentTagValue,InstrumentTagKey2=InstrumentTagValue2";
+            string scopeHash = "123";
+
+            for (int i = 0; i < 10; i++)
+            {
+                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", meterTags, instrumentTags, scopeHash), "counterOne", "Counter One", string.Empty, "foo=bar,baz=7", i, start + TimeSpan.FromSeconds(i)), false);
+            }
+            exporter.Stop();
+
+            Assert.True(File.Exists(fileName));
+
+            try
+            {
+                List<string> lines = File.ReadLines(fileName).ToList();
+                Assert.Equal(11, lines.Count); // should be 11 including the headers
+
+                ValidateHeaderTokens(lines[0]);
+
+                for (int i = 1; i < lines.Count; i++)
+                {
+                    string[] tokens = lines[i].Split(',');
+
+                    Assert.Equal("myProvider", tokens[1]);
+                    Assert.Equal("Counter One[MeterTagKey=MeterTagValue;MeterTagKey2=MeterTagValue2;InstrumentTagKey=InstrumentTagValue;InstrumentTagKey2=InstrumentTagValue2;foo=bar;baz=7]", tokens[2]);
                     Assert.Equal("Metric", tokens[3]);
                     Assert.Equal((i - 1).ToString(), tokens[4]);
                 }
@@ -111,7 +272,7 @@ namespace DotnetCounters.UnitTests
             DateTime start = DateTime.Now;
             for (int i = 0; i < 100; i++)
             {
-                exporter.CounterPayloadReceived(new RatePayload("myProvider", "incrementingCounterOne", "Incrementing Counter One", string.Empty, null, i, 60, start + TimeSpan.FromSeconds(i)), false);
+                exporter.CounterPayloadReceived(new RatePayload(new Provider("myProvider", null, null, null), "incrementingCounterOne", "Incrementing Counter One", string.Empty, null, i, 60, start + TimeSpan.FromSeconds(i)), false);
             }
             exporter.Stop();
 
@@ -122,11 +283,7 @@ namespace DotnetCounters.UnitTests
                 List<string> lines = File.ReadLines(fileName).ToList();
                 Assert.Equal(101, lines.Count); // should be 101 including the headers
 
-                string[] headerTokens = lines[0].Split(',');
-                Assert.Equal("Provider", headerTokens[1]);
-                Assert.Equal("Counter Name", headerTokens[2]);
-                Assert.Equal("Counter Type", headerTokens[3]);
-                Assert.Equal("Mean/Increment", headerTokens[4]);
+                ValidateHeaderTokens(lines[0]);
 
                 for (int i = 1; i < lines.Count; i++)
                 {
@@ -153,7 +310,7 @@ namespace DotnetCounters.UnitTests
             DateTime start = DateTime.Now;
             for (int i = 0; i < 100; i++)
             {
-                exporter.CounterPayloadReceived(new RatePayload("myProvider", "allocRateGen", "Allocation Rate Gen", "MB", string.Empty, i, 60, start + TimeSpan.FromSeconds(i)), false);
+                exporter.CounterPayloadReceived(new RatePayload(new Provider("myProvider", null, null, null), "allocRateGen", "Allocation Rate Gen", "MB", string.Empty, i, 60, start + TimeSpan.FromSeconds(i)), false);
             }
             exporter.Stop();
 
@@ -164,11 +321,7 @@ namespace DotnetCounters.UnitTests
                 List<string> lines = File.ReadLines(fileName).ToList();
                 Assert.Equal(101, lines.Count); // should be 101 including the headers
 
-                string[] headerTokens = lines[0].Split(',');
-                Assert.Equal("Provider", headerTokens[1]);
-                Assert.Equal("Counter Name", headerTokens[2]);
-                Assert.Equal("Counter Type", headerTokens[3]);
-                Assert.Equal("Mean/Increment", headerTokens[4]);
+                ValidateHeaderTokens(lines[0]);
 
                 for (int i = 1; i < lines.Count; i++)
                 {
@@ -195,7 +348,7 @@ namespace DotnetCounters.UnitTests
             DateTime start = DateTime.Now;
             for (int i = 0; i < 100; i++)
             {
-                exporter.CounterPayloadReceived(new RatePayload("myProvider", "allocRateGen", "Allocation Rate Gen", "MB", "foo=bar,baz=7", i, 60, start + TimeSpan.FromSeconds(i)), false);
+                exporter.CounterPayloadReceived(new RatePayload(new Provider("myProvider", null, null, null), "allocRateGen", "Allocation Rate Gen", "MB", "foo=bar,baz=7", i, 60, start + TimeSpan.FromSeconds(i)), false);
             }
             exporter.Stop();
 
@@ -206,11 +359,7 @@ namespace DotnetCounters.UnitTests
                 List<string> lines = File.ReadLines(fileName).ToList();
                 Assert.Equal(101, lines.Count); // should be 101 including the headers
 
-                string[] headerTokens = lines[0].Split(',');
-                Assert.Equal("Provider", headerTokens[1]);
-                Assert.Equal("Counter Name", headerTokens[2]);
-                Assert.Equal("Counter Type", headerTokens[3]);
-                Assert.Equal("Mean/Increment", headerTokens[4]);
+                ValidateHeaderTokens(lines[0]);
 
                 for (int i = 1; i < lines.Count; i++)
                 {
@@ -237,7 +386,7 @@ namespace DotnetCounters.UnitTests
             DateTime start = DateTime.Now;
             for (int i = 0; i < 100; i++)
             {
-                exporter.CounterPayloadReceived(new PercentilePayload("myProvider", "allocRateGen", "Allocation Rate Gen", "MB", "foo=bar,Percentile=50", i, start + TimeSpan.FromSeconds(i)), false);
+                exporter.CounterPayloadReceived(new PercentilePayload(new Provider("myProvider", null, null, null), "allocRateGen", "Allocation Rate Gen", "MB", "foo=bar,Percentile=50", i, start + TimeSpan.FromSeconds(i)), false);
             }
             exporter.Stop();
 
@@ -248,11 +397,7 @@ namespace DotnetCounters.UnitTests
                 List<string> lines = File.ReadLines(fileName).ToList();
                 Assert.Equal(101, lines.Count); // should be 101 including the headers
 
-                string[] headerTokens = lines[0].Split(',');
-                Assert.Equal("Provider", headerTokens[1]);
-                Assert.Equal("Counter Name", headerTokens[2]);
-                Assert.Equal("Counter Type", headerTokens[3]);
-                Assert.Equal("Mean/Increment", headerTokens[4]);
+                ValidateHeaderTokens(lines[0]);
 
                 for (int i = 1; i < lines.Count; i++)
                 {
@@ -268,6 +413,15 @@ namespace DotnetCounters.UnitTests
             {
                 File.Delete(fileName);
             }
+        }
+
+        internal static void ValidateHeaderTokens(string headerLine)
+        {
+            string[] headerTokens = headerLine.Split(',');
+            Assert.Equal("Provider", headerTokens[TestConstants.ProviderIndex]);
+            Assert.Equal("Counter Name", headerTokens[TestConstants.CounterNameIndex]);
+            Assert.Equal("Counter Type", headerTokens[TestConstants.CounterTypeIndex]);
+            Assert.Equal("Mean/Increment", headerTokens[TestConstants.ValueIndex]);
         }
     }
 }

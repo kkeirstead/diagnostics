@@ -89,7 +89,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             CounterType counterType,
             float interval,
             int series,
-            string metadata) : base(timestamp, new(providerName, null, null, null), name, displayName, unit, value, counterType, interval, series, metadata, EventType.Gauge) // might want to change the way we init a Provider here
+            string metadata) : base(timestamp, new(providerName, null, null, null), name, displayName, unit, value, counterType, interval, series, metadata, EventType.Gauge)
         {
         }
     }
@@ -186,8 +186,8 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         public AggregatePercentilePayload(Provider provider, string name, string displayName, string displayUnits, string metadata, IEnumerable<Quantile> quantiles, DateTime timestamp) :
             base(timestamp, provider, name, displayName, displayUnits, 0.0, CounterType.Metric, metadata, EventType.Histogram)
         {
-            string counterName = string.IsNullOrEmpty(displayName) ? name : displayName;
-            DisplayName = !string.IsNullOrEmpty(displayUnits) ? $"{counterName} ({displayUnits})" : counterName;
+            //string counterName = string.IsNullOrEmpty(displayName) ? name : displayName;
+            //DisplayName = !string.IsNullOrEmpty(displayUnits) ? $"{counterName} ({displayUnits})" : counterName;
             Quantiles = quantiles.ToArray();
         }
 
@@ -227,19 +227,23 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         {
             StringBuilder builder = new();
             builder.Append(counterPayload.Provider.MeterTags);
-            if (builder.Length > 0)
-            {
-                if (!string.IsNullOrEmpty(counterPayload.Provider.InstrumentTags))
-                {
-                    builder.Append(',');
-                    builder.Append(counterPayload.Provider.InstrumentTags);
-                }
 
-                if (!string.IsNullOrEmpty(counterPayload.Metadata))
+            if (!string.IsNullOrEmpty(counterPayload.Provider.InstrumentTags))
+            {
+                if (builder.Length > 0)
                 {
                     builder.Append(',');
-                    builder.Append(counterPayload.Metadata);
                 }
+                builder.Append(counterPayload.Provider.InstrumentTags);
+            }
+
+            if (!string.IsNullOrEmpty(counterPayload.Metadata))
+            {
+                if (builder.Length > 0)
+                {
+                    builder.Append(',');
+                }
+                builder.Append(counterPayload.Metadata);
             }
 
             return builder.ToString();
