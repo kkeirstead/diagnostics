@@ -8,24 +8,6 @@ using System.Text;
 
 namespace Microsoft.Diagnostics.Monitoring.EventPipe
 {
-    // Need to decide if this is where we want this to live.
-    public class Provider
-    {
-        public Provider(string providerName, string meterTags, string instrumentTags, string scopeHash)
-        {
-            ProviderName = providerName;
-            MeterTags = meterTags;
-            InstrumentTags = instrumentTags;
-            ScopeHash = scopeHash;
-        }
-
-        public Provider() { }
-        public string ProviderName { get; set; }
-        public string MeterTags { get; set; }
-        public string InstrumentTags { get; set; }
-        public string ScopeHash { get; set; }
-    }
-
     internal abstract class CounterPayload : ICounterPayload
     {
         protected CounterPayload(DateTime timestamp,

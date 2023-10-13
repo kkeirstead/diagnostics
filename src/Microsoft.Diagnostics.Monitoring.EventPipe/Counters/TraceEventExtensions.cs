@@ -32,7 +32,7 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
         private static Dictionary<string, Provider> providersByName = new();
         private static HashSet<string> inactiveSharedSessions = new(StringComparer.OrdinalIgnoreCase);
 
-        // This assumes uniqueness of names (that we can't have multiple tags/scopeHash for the same name) -> is this true?
+        // This assumes uniqueness of provider names - this is currently a limitation (see https://github.com/dotnet/runtime/issues/93097)
         public static Provider GetOrCreateProvider(string providerName, string meterTags = null, string instrumentTags = null, string scopeHash = null)
         {
             if (providersByName.TryGetValue(providerName, out Provider provider))
@@ -208,7 +208,6 @@ namespace Microsoft.Diagnostics.Monitoring.EventPipe
             string meterName = (string)traceEvent.PayloadValue(1);
             //string meterVersion = (string)obj.PayloadValue(2);
             string instrumentName = (string)traceEvent.PayloadValue(3);
-
 
             if (!counterConfiguration.CounterFilter.IsIncluded(meterName, instrumentName))
             {

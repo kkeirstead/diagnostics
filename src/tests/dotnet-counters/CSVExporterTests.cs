@@ -17,6 +17,13 @@ namespace DotnetCounters.UnitTests
     /// </summary>
     public class CSVExporterTests
     {
+        private const string tag1 = "foo=bar";
+        private const string tag2 = "baz=7";
+        private const string meterTag1 = "MeterTagKey=MeterTagValue";
+        private const string meterTag2 = "MeterTagKey2=MeterTagValue2";
+        private const string instrumentTag1 = "InstrumentTagKey=InstrumentTagValue";
+        private const string instrumentTag2 = "InstrumentTagKey2=InstrumentTagValue2";
+
         [Fact]
         public void IncrementingCounterTest()
         {
@@ -55,8 +62,13 @@ namespace DotnetCounters.UnitTests
             }
         }
 
-        [Fact]
-        public void CounterTest()
+        [Theory]
+        [InlineData("", "", "", "")]
+        [InlineData($"{meterTag1},{meterTag2}", "", "", $"[{meterTag1};{meterTag2}]")]
+        [InlineData("", $"{instrumentTag1},{instrumentTag2}", "", $"[{instrumentTag1};{instrumentTag2}]")]
+        [InlineData($"{meterTag1},{meterTag2}", $"{instrumentTag1},{instrumentTag2}", "", $"[{meterTag1};{meterTag2};{instrumentTag1};{instrumentTag2}]")]
+        [InlineData($"{meterTag1},{meterTag2}", $"{instrumentTag1},{instrumentTag2}", $"{tag1},{tag2}", $"[{meterTag1};{meterTag2};{instrumentTag1};{instrumentTag2};{tag1};{tag2}]")]
+        public void CounterTest(string meterTags, string instrumentTags, string tags, string expectedTags)
         {
             string fileName = "CounterTest.csv";
             CSVExporter exporter = new(fileName);
@@ -64,7 +76,7 @@ namespace DotnetCounters.UnitTests
             DateTime start = DateTime.Now;
             for (int i = 0; i < 10; i++)
             {
-                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", null, null, null), "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
+                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", meterTags, instrumentTags, null), "counterOne", "Counter One", string.Empty, tags, i, start + TimeSpan.FromSeconds(i)), false);
             }
             exporter.Stop();
 
@@ -82,177 +94,7 @@ namespace DotnetCounters.UnitTests
                     string[] tokens = lines[i].Split(',');
 
                     Assert.Equal("myProvider", tokens[1]);
-                    Assert.Equal("Counter One", tokens[2]);
-                    Assert.Equal("Metric", tokens[3]);
-                    Assert.Equal((i - 1).ToString(), tokens[4]);
-                }
-            }
-            finally
-            {
-                File.Delete(fileName);
-            }
-        }
-
-        [Fact]
-        public void CounterTest_MeterTags()
-        {
-            string fileName = "CounterTest.csv";
-            CSVExporter exporter = new(fileName);
-            exporter.Initialize();
-            DateTime start = DateTime.Now;
-
-            string meterTags = "MeterTagKey=MeterTagValue,MeterTagKey2=MeterTagValue2";
-            string scopeHash = "123";
-
-            for (int i = 0; i < 10; i++)
-            {
-                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", meterTags, null, scopeHash), "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
-            }
-            exporter.Stop();
-
-            Assert.True(File.Exists(fileName));
-
-            try
-            {
-                List<string> lines = File.ReadLines(fileName).ToList();
-                Assert.Equal(11, lines.Count); // should be 11 including the headers
-
-                ValidateHeaderTokens(lines[0]);
-
-                for (int i = 1; i < lines.Count; i++)
-                {
-                    string[] tokens = lines[i].Split(',');
-
-                    Assert.Equal("myProvider", tokens[1]);
-                    Assert.Equal("Counter One[MeterTagKey=MeterTagValue;MeterTagKey2=MeterTagValue2]", tokens[2]);
-                    Assert.Equal("Metric", tokens[3]);
-                    Assert.Equal((i - 1).ToString(), tokens[4]);
-                }
-            }
-            finally
-            {
-                File.Delete(fileName);
-            }
-        }
-
-        [Fact]
-        public void CounterTest_InstrumentTags()
-        {
-            string fileName = "CounterTest.csv";
-            CSVExporter exporter = new(fileName);
-            exporter.Initialize();
-            DateTime start = DateTime.Now;
-
-            string instrumentTags = "InstrumentTagKey=InstrumentTagValue,InstrumentTagKey2=InstrumentTagValue2";
-            string scopeHash = "123";
-
-            for (int i = 0; i < 10; i++)
-            {
-                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", null, instrumentTags, scopeHash), "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
-            }
-            exporter.Stop();
-
-            Assert.True(File.Exists(fileName));
-
-            try
-            {
-                List<string> lines = File.ReadLines(fileName).ToList();
-                Assert.Equal(11, lines.Count); // should be 11 including the headers
-
-                ValidateHeaderTokens(lines[0]);
-
-                for (int i = 1; i < lines.Count; i++)
-                {
-                    string[] tokens = lines[i].Split(',');
-
-                    Assert.Equal("myProvider", tokens[1]);
-                    Assert.Equal("Counter One[InstrumentTagKey=InstrumentTagValue;InstrumentTagKey2=InstrumentTagValue2]", tokens[2]);
-                    Assert.Equal("Metric", tokens[3]);
-                    Assert.Equal((i - 1).ToString(), tokens[4]);
-                }
-            }
-            finally
-            {
-                File.Delete(fileName);
-            }
-        }
-
-        [Fact]
-        public void CounterTest_MeterInstrumentTags()
-        {
-            string fileName = "CounterTest.csv";
-            CSVExporter exporter = new(fileName);
-            exporter.Initialize();
-            DateTime start = DateTime.Now;
-
-            string meterTags = "MeterTagKey=MeterTagValue,MeterTagKey2=MeterTagValue2";
-            string instrumentTags = "InstrumentTagKey=InstrumentTagValue,InstrumentTagKey2=InstrumentTagValue2";
-            string scopeHash = "123";
-
-            for (int i = 0; i < 10; i++)
-            {
-                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", meterTags, instrumentTags, scopeHash), "counterOne", "Counter One", string.Empty, null, i, start + TimeSpan.FromSeconds(i)), false);
-            }
-            exporter.Stop();
-
-            Assert.True(File.Exists(fileName));
-
-            try
-            {
-                List<string> lines = File.ReadLines(fileName).ToList();
-                Assert.Equal(11, lines.Count); // should be 11 including the headers
-
-                ValidateHeaderTokens(lines[0]);
-
-                for (int i = 1; i < lines.Count; i++)
-                {
-                    string[] tokens = lines[i].Split(',');
-
-                    Assert.Equal("myProvider", tokens[1]);
-                    Assert.Equal("Counter One[MeterTagKey=MeterTagValue;MeterTagKey2=MeterTagValue2;InstrumentTagKey=InstrumentTagValue;InstrumentTagKey2=InstrumentTagValue2]", tokens[2]);
-                    Assert.Equal("Metric", tokens[3]);
-                    Assert.Equal((i - 1).ToString(), tokens[4]);
-                }
-            }
-            finally
-            {
-                File.Delete(fileName);
-            }
-        }
-
-        [Fact]
-        public void CounterTest_AllTags()
-        {
-            string fileName = "CounterTest.csv";
-            CSVExporter exporter = new(fileName);
-            exporter.Initialize();
-            DateTime start = DateTime.Now;
-
-            string meterTags = "MeterTagKey=MeterTagValue,MeterTagKey2=MeterTagValue2";
-            string instrumentTags = "InstrumentTagKey=InstrumentTagValue,InstrumentTagKey2=InstrumentTagValue2";
-            string scopeHash = "123";
-
-            for (int i = 0; i < 10; i++)
-            {
-                exporter.CounterPayloadReceived(new GaugePayload(new Provider("myProvider", meterTags, instrumentTags, scopeHash), "counterOne", "Counter One", string.Empty, "foo=bar,baz=7", i, start + TimeSpan.FromSeconds(i)), false);
-            }
-            exporter.Stop();
-
-            Assert.True(File.Exists(fileName));
-
-            try
-            {
-                List<string> lines = File.ReadLines(fileName).ToList();
-                Assert.Equal(11, lines.Count); // should be 11 including the headers
-
-                ValidateHeaderTokens(lines[0]);
-
-                for (int i = 1; i < lines.Count; i++)
-                {
-                    string[] tokens = lines[i].Split(',');
-
-                    Assert.Equal("myProvider", tokens[1]);
-                    Assert.Equal("Counter One[MeterTagKey=MeterTagValue;MeterTagKey2=MeterTagValue2;InstrumentTagKey=InstrumentTagValue;InstrumentTagKey2=InstrumentTagValue2;foo=bar;baz=7]", tokens[2]);
+                    Assert.Equal($"Counter One{expectedTags}", tokens[2]);
                     Assert.Equal("Metric", tokens[3]);
                     Assert.Equal((i - 1).ToString(), tokens[4]);
                 }
